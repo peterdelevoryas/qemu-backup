@@ -2468,6 +2468,24 @@ bool kvmppc_has_cap_xive(void)
     return cap_xive;
 }
 
+/*
+ * TODO: Introduce a new KVM capability
+ */
+bool kvmppc_has_cap_xive_storeeoi(void)
+{
+    static const char *compat = "ibm,opal-xive-pe";
+    void *host_fdt;
+    int xive_node;
+
+    host_fdt = load_device_tree_from_sysfs();
+    xive_node = fdt_node_offset_by_compatible(host_fdt, -1, compat);
+    if (xive_node < 0) {
+        return false;
+    }
+
+    return !!fdt_getprop(host_fdt, xive_node, "store-eoi", NULL);
+}
+
 static void kvmppc_get_cpu_characteristics(KVMState *s)
 {
     struct kvm_ppc_cpu_char c;

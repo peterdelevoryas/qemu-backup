@@ -613,6 +613,26 @@ static void cap_rpt_invalidate_apply(SpaprMachineState *spapr,
     }
 }
 
+static void cap_storeeoi_apply(SpaprMachineState *spapr, uint8_t val,
+                               Error **errp)
+{
+    ERRP_GUARD();
+    MachineState *machine = MACHINE(spapr);
+    bool kvm_storeeoi = kvmppc_has_cap_xive_storeeoi();
+
+    if (!val) {
+        return; /* Disabled by default */
+    }
+
+    /* Check host support when the KVM device is in use */
+    if (kvm_irqchip_in_kernel()) {
+        if (!kvm_storeeoi) {
+            error_setg(errp, "StoreEOI not supported by KVM");
+            return;
+        }
+    }
+}
+
 SpaprCapabilityInfo capability_table[SPAPR_CAP_NUM] = {
     [SPAPR_CAP_HTM] = {
         .name = "htm",
@@ -729,6 +749,15 @@ SpaprCapabilityInfo capability_table[SPAPR_CAP_NUM] = {
         .set = spapr_cap_set_bool,
         .type = "bool",
         .apply = cap_rpt_invalidate_apply,
+    },
+    [SPAPR_CAP_STOREEOI] = {
+        .name = "storeeoi",
+        .description = "Implements XIVE StoreEOI feature",
+        .index = SPAPR_CAP_STOREEOI,
+        .get = spapr_cap_get_bool,
+        .set = spapr_cap_set_bool,
+        .type = "bool",
+        .apply = cap_storeeoi_apply,
     },
 };
 
@@ -871,6 +900,7 @@ SPAPR_CAP_MIG_STATE(large_decr, SPAPR_CAP_LARGE_DECREMENTER);
 SPAPR_CAP_MIG_STATE(ccf_assist, SPAPR_CAP_CCF_ASSIST);
 SPAPR_CAP_MIG_STATE(fwnmi, SPAPR_CAP_FWNMI);
 SPAPR_CAP_MIG_STATE(rpt_invalidate, SPAPR_CAP_RPT_INVALIDATE);
+SPAPR_CAP_MIG_STATE(storeeoi, SPAPR_CAP_STOREEOI);
 
 void spapr_caps_init(SpaprMachineState *spapr)
 {
