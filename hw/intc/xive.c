@@ -1140,11 +1140,18 @@ void xive_source_pic_print_info(XiveSource *xsrc, uint32_t offset, Monitor *mon)
 static void xive_source_reset(void *dev)
 {
     XiveSource *xsrc = XIVE_SOURCE(dev);
+    int i;
 
     /* Do not clear the LSI bitmap */
 
-    /* PQs are initialized to 0b01 (Q=1) which corresponds to "ints off" */
-    memset(xsrc->status, XIVE_ESB_OFF, xsrc->nr_irqs);
+    /*
+     * PQs are initialized to 0b01 (Q=1) which corresponds to "ints off"
+     * and KVM state is kept.
+     */
+    for (i = 0; i < xsrc->nr_irqs; i++) {
+        xsrc->status[i] &= XIVE_STATUS_KVM;
+        xsrc->status[i] |= XIVE_ESB_OFF;
+    }
 }
 
 static void xive_source_realize(DeviceState *dev, Error **errp)

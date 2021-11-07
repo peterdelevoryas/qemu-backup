@@ -235,6 +235,7 @@ int kvmppc_xive_source_reset_one(XiveSource *xsrc, int srcno, Error **errp)
 {
     SpaprXive *xive = SPAPR_XIVE(xsrc->xive);
     uint64_t state = 0;
+    int ret;
 
     trace_kvm_xive_source_reset(srcno);
 
@@ -247,8 +248,12 @@ int kvmppc_xive_source_reset_one(XiveSource *xsrc, int srcno, Error **errp)
         }
     }
 
-    return kvm_device_access(xive->fd, KVM_DEV_XIVE_GRP_SOURCE, srcno, &state,
+    ret = kvm_device_access(xive->fd, KVM_DEV_XIVE_GRP_SOURCE, srcno, &state,
                              true, errp);
+
+    xive_source_set_kvm(xsrc, srcno, ret >= 0);
+
+    return ret;
 }
 
 static int kvmppc_xive_source_reset(XiveSource *xsrc, Error **errp)

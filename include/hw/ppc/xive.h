@@ -184,7 +184,7 @@ struct XiveSource {
     uint32_t        nr_irqs;
     unsigned long   *lsi_map;
 
-    /* PQ bits and LSI assertion bit */
+    /* PQ bits, LSI assertion bit and KVM state */
     uint8_t         *status;
 
     /* ESB memory region */
@@ -252,6 +252,7 @@ static inline hwaddr xive_source_esb_mgmt(XiveSource *xsrc, int srcno)
  * When doing an EOI, the Q bit will indicate if the interrupt
  * needs to be re-triggered.
  */
+#define XIVE_STATUS_KVM       0x8  /* Initialized in the KVM device */
 #define XIVE_STATUS_ASSERTED  0x4  /* Extra bit for LSI */
 #define XIVE_ESB_VAL_P        0x2
 #define XIVE_ESB_VAL_Q        0x1
@@ -308,6 +309,17 @@ static inline void xive_source_set_asserted(XiveSource *xsrc, uint32_t srcno,
 static inline bool xive_source_is_asserted(XiveSource *xsrc, uint32_t srcno)
 {
     return xsrc->status[srcno] & XIVE_STATUS_ASSERTED;
+}
+
+static inline void xive_source_set_kvm(XiveSource *xsrc, uint32_t srcno,
+                                       bool enable)
+{
+    xive_source_set_status(xsrc, srcno, XIVE_STATUS_KVM, enable);
+}
+
+static inline bool xive_source_is_kvm(XiveSource *xsrc, uint32_t srcno)
+{
+    return xsrc->status[srcno] & XIVE_STATUS_KVM;
 }
 
 void xive_source_pic_print_info(XiveSource *xsrc, uint32_t offset,
