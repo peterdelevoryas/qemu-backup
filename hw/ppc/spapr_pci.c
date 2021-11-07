@@ -93,6 +93,36 @@ PCIDevice *spapr_pci_find_dev(SpaprMachineState *spapr, uint64_t buid,
     return pci_find_device(phb->bus, bus_num, devfn);
 }
 
+static bool spapr_phb_is_msi(SpaprPhbState *sphb, int irq)
+{
+    GHashTableIter iter;
+    gpointer key, value;
+    int i;
+
+    g_hash_table_iter_init(&iter, sphb->msi);
+    for (i = 0; g_hash_table_iter_next(&iter, &key, &value); ++i) {
+        SpaprPciMsi *msi = (SpaprPciMsi *) value;
+        if (irq >= msi->first_irq && irq < msi->first_irq + msi->num) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+SpaprPhbState *spapr_pci_find_phb_by_msi(SpaprMachineState *spapr, int irq)
+{
+    SpaprPhbState *sphb;
+
+    QLIST_FOREACH(sphb, &spapr->phbs, list) {
+        if (spapr_phb_is_msi(sphb, irq)) {
+                return sphb;
+        }
+    }
+
+    return NULL;
+}
+
 static uint32_t rtas_pci_cfgaddr(uint32_t arg)
 {
     /* This handles the encoding of extended config space addresses */

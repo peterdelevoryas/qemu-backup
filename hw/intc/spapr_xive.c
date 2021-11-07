@@ -23,6 +23,7 @@
 #include "hw/ppc/spapr_xive.h"
 #include "hw/ppc/xive.h"
 #include "hw/ppc/xive_regs.h"
+#include "hw/pci-host/spapr.h"
 #include "hw/qdev-properties.h"
 #include "trace.h"
 
@@ -176,6 +177,7 @@ static void spapr_xive_pic_print_info(SpaprXive *xive, Monitor *mon)
     for (i = 0; i < xive->nr_irqs; i++) {
         uint8_t pq = xive_source_esb_get(xsrc, i);
         XiveEAS *eas = &xive->eat[i];
+        SpaprPhbState *phb = NULL;
 
         if (!xive_eas_is_valid(eas)) {
             continue;
@@ -199,6 +201,15 @@ static void spapr_xive_pic_print_info(SpaprXive *xive, Monitor *mon)
             if (xive_end_is_valid(end)) {
                 spapr_xive_end_pic_print_info(xive, end, mon);
             }
+        }
+
+        if (i >= SPAPR_IRQ_MSI) {
+            SpaprMachineState *spapr = SPAPR_MACHINE(qdev_get_machine());
+            phb = spapr_pci_find_phb_by_msi(spapr, i);
+        }
+
+        if (phb && phb->numa_node != -1) {
+            monitor_printf(mon, " PHB#%d", phb->numa_node);
         }
         monitor_printf(mon, "\n");
     }

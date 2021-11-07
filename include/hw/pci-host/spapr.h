@@ -139,6 +139,7 @@ PCIDevice *spapr_pci_find_dev(SpaprMachineState *spapr, uint64_t buid,
 void spapr_phb_remove_pci_device_cb(DeviceState *dev);
 int spapr_pci_dt_populate(SpaprDrc *drc, SpaprMachineState *spapr,
                           void *fdt, int *fdt_start_offset, Error **errp);
+SpaprPhbState *spapr_pci_find_phb_by_msi(SpaprMachineState *spapr, int irq);
 
 /* VFIO EEH hooks */
 #ifdef CONFIG_LINUX
