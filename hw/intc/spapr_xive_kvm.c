@@ -289,6 +289,8 @@ static uint64_t xive_esb_rw(XiveSource *xsrc, int srcno, uint32_t offset,
     uint64_t *addr = xsrc->esb_mmap + xive_source_esb_mgmt(xsrc, srcno) +
         offset;
 
+    assert(xive_source_is_kvm(xsrc, srcno));
+
     if (write) {
         *addr = cpu_to_be64(data);
         return -1;
