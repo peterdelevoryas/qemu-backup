@@ -172,7 +172,7 @@ static void spapr_xive_pic_print_info(SpaprXive *xive, Monitor *mon)
         }
     }
 
-    monitor_printf(mon, "  LISN         PQ    EISN     CPU/PRIO EQ\n");
+    monitor_printf(mon, "KVM  LISN         PQ    EISN     CPU/PRIO EQ\n");
 
     for (i = 0; i < xive->nr_irqs; i++) {
         uint8_t pq = xive_source_esb_get(xsrc, i);
@@ -183,7 +183,8 @@ static void spapr_xive_pic_print_info(SpaprXive *xive, Monitor *mon)
             continue;
         }
 
-        monitor_printf(mon, "  %08x %s %c%c%c %s %08x ", i,
+        monitor_printf(mon, " %c   %08x %s %c%c%c %s %08x ",
+                       xive_source_is_kvm(xsrc, i) ? '+' : ' ', i,
                        xive_source_irq_is_lsi(xsrc, i) ? "LSI" : "MSI",
                        pq & XIVE_ESB_VAL_P ? 'P' : '-',
                        pq & XIVE_ESB_VAL_Q ? 'Q' : '-',

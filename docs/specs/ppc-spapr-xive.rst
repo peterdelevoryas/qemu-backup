@@ -257,6 +257,7 @@ END configuration:
 
 The source information and configuration:
 
+- The ``KVM`` column indicates the status of the source at the KVM level
 - The ``LISN`` column outputs the interrupt number of the source in
   range ``[ 0x0 ... 0x1FFF ]`` and its type : ``MSI`` or ``LSI``
 - The ``PQ`` column reflects the state of the PQ bits of the source :
