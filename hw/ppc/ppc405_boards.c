@@ -33,6 +33,8 @@
 #include "hw/sysbus.h"
 #include "ppc405.h"
 #include "hw/rtc/m48t59.h"
+#include "net/net.h"
+#include "hw/pci/pci.h"
 #include "hw/block/flash.h"
 #include "sysemu/qtest.h"
 #include "sysemu/reset.h"
@@ -353,9 +355,38 @@ static const TypeInfo ref405ep_type = {
 /*
  * hotfoot board as defined in Linux
  */
+#define PPC405HF_PCI_CONFIG 0xEEC00000
+#define PPC405HF_PCI_IO     0xE8000000
+#define PPC405HF_PCI_IOLEN  0x00010000
+
 static void ppc405_hotfoot_init(MachineState *machine)
 {
+    Ppc405MachineState *ppc405 = PPC405_MACHINE(machine);
+    Ppc405SoCState *soc = &ppc405->soc;
+    unsigned int pci_irq_nrs[4] = { 29, 28, 27, 26 }; /* from hotfoot DT */
+    PCIBus *pcibus;
+    DeviceState *dev;
+    MemoryRegion *isa;
+    int i;
+
     ppc405_init(machine);
+
+    dev = sysbus_create_varargs(TYPE_PPC4xx_PCI_HOST_BRIDGE,
+                                PPC405HF_PCI_CONFIG,
+                                qdev_get_gpio_in(soc->uic, pci_irq_nrs[0]),
+                                qdev_get_gpio_in(soc->uic, pci_irq_nrs[1]),
+                                qdev_get_gpio_in(soc->uic, pci_irq_nrs[2]),
+                                qdev_get_gpio_in(soc->uic, pci_irq_nrs[3]),
+                                NULL);
+    isa = g_new(MemoryRegion, 1);
+    memory_region_init_alias(isa, NULL, "isa_mmio",
+                             get_system_io(), 0, PPC405HF_PCI_IOLEN);
+    memory_region_add_subregion(get_system_memory(), PPC405HF_PCI_IO, isa);
+
+    pcibus = PCI_BUS(qdev_get_child_bus(dev, "pci.0"));
+    for (i = 0; i < nb_nics; i++) {
+        pci_nic_init_nofail(&nd_table[i], pcibus, "rtl8139", NULL);
+    }
 }
 
 static void ppc405_hotfoot_class_init(ObjectClass *oc, void *data)
