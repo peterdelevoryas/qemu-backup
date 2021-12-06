@@ -59,6 +59,7 @@ struct Ppc405MachineState {
     Ppc405SoCState soc;
 };
 
+#define TYPE_PPC405_HOTFOOT_MACHINE MACHINE_TYPE_NAME("ppc405-hotfoot")
 #define TYPE_PPC405_MACHINE MACHINE_TYPE_NAME("ppc405")
 OBJECT_DECLARE_SIMPLE_TYPE(Ppc405MachineState, PPC405_MACHINE);
 
@@ -349,6 +350,28 @@ static const TypeInfo ref405ep_type = {
     .class_init = ref405ep_class_init,
 };
 
+/*
+ * hotfoot board as defined in Linux
+ */
+static void ppc405_hotfoot_init(MachineState *machine)
+{
+    ppc405_init(machine);
+}
+
+static void ppc405_hotfoot_class_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "PPC405 Hotfoot";
+    mc->init = ppc405_hotfoot_init;
+}
+
+static const TypeInfo ppc405_hotfoot_type = {
+    .name = TYPE_PPC405_HOTFOOT_MACHINE,
+    .parent = TYPE_PPC405_MACHINE,
+    .class_init = ppc405_hotfoot_class_init,
+};
+
 static void ppc405_machine_class_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
@@ -603,6 +626,7 @@ static const TypeInfo taihu_type = {
 static void ppc405_machine_init(void)
 {
     type_register_static(&ppc405_machine_type);
+    type_register_static(&ppc405_hotfoot_type);
     type_register_static(&ref405ep_type);
     type_register_static(&taihu_type);
 }
