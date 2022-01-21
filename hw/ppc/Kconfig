@@ -39,6 +39,7 @@ config PPC405
     select PFLASH_CFI02
     select PPC4XX
     select SERIAL
+    select TMP105
 
 config PPC440
     bool

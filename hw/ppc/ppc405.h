@@ -82,6 +82,7 @@ struct Ppc405SoCState {
     uint32_t sysclk;
     PowerPCCPU *cpu;
     DeviceState *uic;
+    DeviceState *i2c;
 };
 
 /* PowerPC 405 core */

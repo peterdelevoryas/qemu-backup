@@ -28,6 +28,7 @@
 #include "qemu-common.h"
 #include "qemu/datadir.h"
 #include "cpu.h"
+#include "hw/i2c/i2c.h"
 #include "hw/ppc/ppc.h"
 #include "hw/qdev-properties.h"
 #include "hw/sysbus.h"
@@ -365,6 +366,7 @@ static void ppc405_hotfoot_init(MachineState *machine)
     Ppc405SoCState *soc = &ppc405->soc;
     unsigned int pci_irq_nrs[4] = { 29, 28, 27, 26 }; /* from hotfoot DT */
     PCIBus *pcibus;
+    I2CBus *i2cbus;
     DeviceState *dev;
     MemoryRegion *isa;
     int i;
@@ -387,6 +389,10 @@ static void ppc405_hotfoot_init(MachineState *machine)
     for (i = 0; i < nb_nics; i++) {
         pci_nic_init_nofail(&nd_table[i], pcibus, "rtl8139", NULL);
     }
+
+    i2cbus = I2C_BUS(qdev_get_child_bus(soc->i2c, "i2c"));
+    i2c_slave_create_simple(i2cbus, "ds1338", 0x68);
+    i2c_slave_create_simple(i2cbus, "tmp105", 0x4a);
 }
 
 static void ppc405_hotfoot_class_init(ObjectClass *oc, void *data)

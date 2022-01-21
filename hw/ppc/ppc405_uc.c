@@ -1612,8 +1612,8 @@ static void ppc405_soc_realize(DeviceState *dev, Error **errp)
     ppc405_dma_init(env, dma_irqs);
 
     /* I2C controller */
-    sysbus_create_simple(TYPE_PPC4xx_I2C, 0xef600500,
-                         qdev_get_gpio_in(s->uic, 2));
+    s->i2c = sysbus_create_simple(TYPE_PPC4xx_I2C, 0xef600500,
+                                  qdev_get_gpio_in(s->uic, 2));
     /* GPIO */
     ppc405_gpio_init(0xef600700);
 
