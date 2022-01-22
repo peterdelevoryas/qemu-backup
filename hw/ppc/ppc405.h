@@ -74,9 +74,14 @@ struct Ppc405SoCState {
     MemoryRegion sram;
     MemoryRegion ram_memories[2];
     hwaddr ram_bases[2], ram_sizes[2];
+    bool do_dram_init;
 
     MemoryRegion *dram_mr;
     hwaddr ram_size;
+
+    uint32_t sysclk;
+    PowerPCCPU *cpu;
+    DeviceState *uic;
 };
 
 /* PowerPC 405 core */
