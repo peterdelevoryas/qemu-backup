@@ -783,4 +783,28 @@ QTestState *qtest_inproc_init(QTestState **s, bool log, const char* arch,
                     void (*send)(void*, const char*));
 
 void qtest_client_inproc_recv(void *opaque, const char *str);
+
+/**
+ * qtest_qmp_get_bool:
+ * @s: QTestState instance to operate on.
+ * @path: Path to a QOM object.
+ * @property: The name of the QOM object property to get.
+ *
+ * Get a boolean property on a QOM object via QMP with qom-get.
+ */
+bool qtest_qmp_get_bool(QTestState *s, const char *path, const char *property);
+
+
+/**
+ * qtest_qmp_set_bool:
+ * @s: QTestState instance to operate on.
+ * @path: Path to a QOM object.
+ * @property: The name of the QOM object property to get.
+ * @value: Boolean value to set the property with.
+ *
+ * Set a boolean property on a QOM object via QMP with qom-set.
+ */
+void qtest_qmp_set_bool(QTestState *s, const char *path, const char *property,
+                        bool value);
+
 #endif
