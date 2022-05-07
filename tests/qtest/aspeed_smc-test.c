@@ -52,6 +52,7 @@ enum {
     JEDEC_READ = 0x9f,
     BULK_ERASE = 0xc7,
     READ = 0x03,
+    WRSR = 0x1,
     PP = 0x02,
     WRDI = 0x4,
     RDSR = 0x5,
@@ -66,6 +67,7 @@ enum {
  * Flash status register bits
  */
 #define SR_WEL BIT(1)
+#define SR_SRWD BIT(7)
 
 #define FLASH_JEDEC         0x20ba19  /* n25q256a */
 #define FLASH_SIZE          (32 * 1024 * 1024)
@@ -391,6 +393,43 @@ static void test_read_status_reg(void)
     flash_reset();
 }
 
+static void test_write_status_reg(void)
+{
+    uint8_t sr;
+
+    spi_conf(CONF_ENABLE_W0);
+
+    spi_ctrl_start_user();
+    writeb(ASPEED_FLASH_BASE, WREN);
+    writeb(ASPEED_FLASH_BASE, WRSR);
+    writeb(ASPEED_FLASH_BASE, SR_SRWD);
+    spi_ctrl_stop_user();
+
+    spi_ctrl_start_user();
+    writeb(ASPEED_FLASH_BASE, WREN);
+    writeb(ASPEED_FLASH_BASE, RDSR);
+    sr = readb(ASPEED_FLASH_BASE);
+    spi_ctrl_stop_user();
+    g_assert_cmphex(sr & SR_SRWD, ==, SR_SRWD);
+
+    sr &= ~SR_SRWD;
+
+    spi_ctrl_start_user();
+    writeb(ASPEED_FLASH_BASE, WREN);
+    writeb(ASPEED_FLASH_BASE, WRSR);
+    writeb(ASPEED_FLASH_BASE, sr);
+    spi_ctrl_stop_user();
+
+    spi_ctrl_start_user();
+    writeb(ASPEED_FLASH_BASE, WREN);
+    writeb(ASPEED_FLASH_BASE, RDSR);
+    sr = readb(ASPEED_FLASH_BASE);
+    spi_ctrl_stop_user();
+    g_assert_cmphex(sr & SR_SRWD, ==, 0);
+
+    flash_reset();
+}
+
 static char tmp_path[] = "/tmp/qtest.m25p80.XXXXXX";
 
 int main(int argc, char **argv)
@@ -417,6 +456,7 @@ int main(int argc, char **argv)
     qtest_add_func("/ast2400/smc/read_page_mem", test_read_page_mem);
     qtest_add_func("/ast2400/smc/write_page_mem", test_write_page_mem);
     qtest_add_func("/ast2400/smc/read_status_reg", test_read_status_reg);
+    qtest_add_func("/ast2400/smc/write_status_reg", test_write_status_reg);
 
     ret = g_test_run();
 
