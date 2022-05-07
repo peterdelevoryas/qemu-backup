@@ -25,6 +25,7 @@
 
 #include "qemu/osdep.h"
 #include "qemu/bswap.h"
+#include "qemu/bitops.h"
 #include "libqtest-single.h"
 
 /*
@@ -52,12 +53,19 @@ enum {
     BULK_ERASE = 0xc7,
     READ = 0x03,
     PP = 0x02,
+    WRDI = 0x4,
+    RDSR = 0x5,
     WREN = 0x6,
     RESET_ENABLE = 0x66,
     RESET_MEMORY = 0x99,
     EN_4BYTE_ADDR = 0xB7,
     ERASE_SECTOR = 0xd8,
 };
+
+/*
+ * Flash status register bits
+ */
+#define SR_WEL BIT(1)
 
 #define FLASH_JEDEC         0x20ba19  /* n25q256a */
 #define FLASH_SIZE          (32 * 1024 * 1024)
@@ -348,6 +356,41 @@ static void test_write_page_mem(void)
     flash_reset();
 }
 
+static void test_read_status_reg(void)
+{
+    uint8_t sr;
+
+    spi_conf(CONF_ENABLE_W0);
+
+    /*
+     * Status register reads should reflect the "write enable latch" (WEL)
+     * state, which is configured through WRITE ENABLE and WRITE DISABLE
+     * commands.
+     */
+
+    spi_ctrl_start_user();
+    writeb(ASPEED_FLASH_BASE, RDSR);
+    sr = readb(ASPEED_FLASH_BASE);
+    g_assert_cmphex(sr & SR_WEL, ==, 0x00);
+    spi_ctrl_stop_user();
+
+    spi_ctrl_start_user();
+    writeb(ASPEED_FLASH_BASE, WREN);
+    writeb(ASPEED_FLASH_BASE, RDSR);
+    sr = readb(ASPEED_FLASH_BASE);
+    g_assert_cmphex(sr & SR_WEL, ==, SR_WEL);
+    spi_ctrl_stop_user();
+
+    spi_ctrl_start_user();
+    writeb(ASPEED_FLASH_BASE, WRDI);
+    writeb(ASPEED_FLASH_BASE, RDSR);
+    sr = readb(ASPEED_FLASH_BASE);
+    g_assert_cmphex(sr & SR_WEL, ==, 0x00);
+    spi_ctrl_stop_user();
+
+    flash_reset();
+}
+
 static char tmp_path[] = "/tmp/qtest.m25p80.XXXXXX";
 
 int main(int argc, char **argv)
@@ -373,6 +416,7 @@ int main(int argc, char **argv)
     qtest_add_func("/ast2400/smc/write_page", test_write_page);
     qtest_add_func("/ast2400/smc/read_page_mem", test_read_page_mem);
     qtest_add_func("/ast2400/smc/write_page_mem", test_write_page_mem);
+    qtest_add_func("/ast2400/smc/read_status_reg", test_read_status_reg);
 
     ret = g_test_run();
 
