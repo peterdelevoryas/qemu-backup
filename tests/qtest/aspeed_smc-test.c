@@ -395,37 +395,46 @@ static void test_read_status_reg(void)
 
 static void test_write_status_reg(void)
 {
+    bool wp;
     uint8_t sr;
 
     spi_conf(CONF_ENABLE_W0);
 
-    spi_ctrl_start_user();
-    writeb(ASPEED_FLASH_BASE, WREN);
-    writeb(ASPEED_FLASH_BASE, WRSR);
-    writeb(ASPEED_FLASH_BASE, SR_SRWD);
-    spi_ctrl_stop_user();
+    for (wp = true; wp; wp = !wp) {
+        qtest_qmp_set_bool(global_qtest, "/machine/soc/fmc/ssi.0/child[0]",
+                           "W#", wp);
 
-    spi_ctrl_start_user();
-    writeb(ASPEED_FLASH_BASE, WREN);
-    writeb(ASPEED_FLASH_BASE, RDSR);
-    sr = readb(ASPEED_FLASH_BASE);
-    spi_ctrl_stop_user();
-    g_assert_cmphex(sr & SR_SRWD, ==, SR_SRWD);
+        spi_ctrl_start_user();
+        writeb(ASPEED_FLASH_BASE, WREN);
+        writeb(ASPEED_FLASH_BASE, WRSR);
+        writeb(ASPEED_FLASH_BASE, SR_SRWD);
+        spi_ctrl_stop_user();
 
-    sr &= ~SR_SRWD;
+        spi_ctrl_start_user();
+        writeb(ASPEED_FLASH_BASE, RDSR);
+        sr = readb(ASPEED_FLASH_BASE);
+        spi_ctrl_stop_user();
 
-    spi_ctrl_start_user();
-    writeb(ASPEED_FLASH_BASE, WREN);
-    writeb(ASPEED_FLASH_BASE, WRSR);
-    writeb(ASPEED_FLASH_BASE, sr);
-    spi_ctrl_stop_user();
+        g_assert_cmphex(sr & SR_SRWD, ==, SR_SRWD);
+        sr &= ~SR_SRWD;
 
-    spi_ctrl_start_user();
-    writeb(ASPEED_FLASH_BASE, WREN);
-    writeb(ASPEED_FLASH_BASE, RDSR);
-    sr = readb(ASPEED_FLASH_BASE);
-    spi_ctrl_stop_user();
-    g_assert_cmphex(sr & SR_SRWD, ==, 0);
+        spi_ctrl_start_user();
+        writeb(ASPEED_FLASH_BASE, WREN);
+        writeb(ASPEED_FLASH_BASE, WRSR);
+        writeb(ASPEED_FLASH_BASE, sr);
+        spi_ctrl_stop_user();
+
+        spi_ctrl_start_user();
+        writeb(ASPEED_FLASH_BASE, RDSR);
+        sr = readb(ASPEED_FLASH_BASE);
+        spi_ctrl_stop_user();
+
+        /*
+         * Status register writes can be reenabled if W# is high. Status
+         * register writes will remain disabled if W# is low.
+         */
+        g_assert_cmphex(!(sr & SR_SRWD), ==, wp);
+    }
 
     flash_reset();
 }
