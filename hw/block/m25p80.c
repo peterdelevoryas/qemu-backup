@@ -480,6 +480,8 @@ struct Flash {
     bool reset_enable;
     bool quad_enable;
     bool aai_enable;
+    /* Status register write disable. */
+    bool srwd;
     uint8_t ear;
 
     int64_t dirty_page;
@@ -726,6 +728,8 @@ static void complete_collecting_data(Flash *s)
         flash_erase(s, s->cur_addr, s->cmd_in_progress);
         break;
     case WRSR:
+        s->srwd = extract32(s->data[0], 7, 1);
+
         switch (get_man(s)) {
         case MAN_SPANSION:
             s->quad_enable = !!(s->data[1] & 0x02);
@@ -805,6 +809,7 @@ static void reset_memory(Flash *s)
     s->reset_enable = false;
     s->quad_enable = false;
     s->aai_enable = false;
+    s->srwd = false;
 
     switch (get_man(s)) {
     case MAN_NUMONYX:
@@ -1169,6 +1174,17 @@ static void decode_new_cmd(Flash *s, uint32_t value)
         break;
 
     case WRSR:
+        /*
+         * If W# is low and SRWD is high, status register writes are disabled.
+         * This is also called "hardware protected mode" (HPM). All other
+         * combinations of the two states are called "software protected mode"
+         * (SPM), and status register writes are permitted.
+         */
+        if (s->write_protect == 0 && s->srwd) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "M25P80: Status register write is disabled!\n");
+            break;
+        }
         if (s->write_enable) {
             switch (get_man(s)) {
             case MAN_SPANSION:
@@ -1205,6 +1221,7 @@ static void decode_new_cmd(Flash *s, uint32_t value)
         if (get_man(s) == MAN_SST) {
             s->data[0] |= (!!s->aai_enable) << 6;
         }
+        s->data[0] |= (!!s->srwd) << 7;
 
         s->pos = 0;
         s->len = 1;
