@@ -480,6 +480,8 @@ struct Flash {
     bool reset_enable;
     bool quad_enable;
     bool aai_enable;
+    bool top_bottom;
+    bool bp0, bp1, bp2;
     /* Status register write disable. */
     bool srwd;
     uint8_t ear;
@@ -794,6 +796,10 @@ static void complete_collecting_data(Flash *s)
     }
 }
 
+/*
+ * Only reset volatile state that would be reset by RESET MEMORY commands,
+ * preserve nonvolatile state such as write protection configuration.
+ */
 static void reset_memory(Flash *s)
 {
     s->cmd_in_progress = NOP;
@@ -804,12 +810,10 @@ static void reset_memory(Flash *s)
     s->needed_bytes = 0;
     s->pos = 0;
     s->state = STATE_IDLE;
-    s->write_protect = true;
-    s->write_enable = false;
+    s->write_enable = false; /* The write enable latch is volatile. */
     s->reset_enable = false;
     s->quad_enable = false;
     s->aai_enable = false;
-    s->srwd = false;
 
     switch (get_man(s)) {
     case MAN_NUMONYX:
@@ -1549,9 +1553,16 @@ static void m25p80_realize(SSIPeripheral *ss, Error **errp)
     qdev_init_gpio_in_named(DEVICE(s), m25p80_write_protect_irq_handler, "W#", 1);
 }
 
+/*
+ * Reset everything, including nonvolatile state like write protection bits.
+ */
 static void m25p80_reset(DeviceState *d)
 {
     Flash *s = M25P80(d);
+
+    /* W# pin state defaults to high, which is actually permissive. */
+    s->write_protect = true;
+    s->srwd = false;
 
     reset_memory(s);
 }
