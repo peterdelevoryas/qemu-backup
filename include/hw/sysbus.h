@@ -80,6 +80,8 @@ void sysbus_connect_irq(SysBusDevice *dev, int n, qemu_irq irq);
 bool sysbus_is_irq_connected(SysBusDevice *dev, int n);
 qemu_irq sysbus_get_connected_irq(SysBusDevice *dev, int n);
 void sysbus_mmio_map(SysBusDevice *dev, int n, hwaddr addr);
+void sysbus_mmio_map_in(SysBusDevice *dev, int n, hwaddr addr,
+                        MemoryRegion *system_memory);
 void sysbus_mmio_map_overlap(SysBusDevice *dev, int n, hwaddr addr,
                              int priority);
 void sysbus_add_io(SysBusDevice *dev, hwaddr addr,

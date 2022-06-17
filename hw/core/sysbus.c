@@ -160,6 +160,12 @@ void sysbus_mmio_map(SysBusDevice *dev, int n, hwaddr addr)
     sysbus_mmio_map_common(dev, n, addr, false, 0, get_system_memory());
 }
 
+void sysbus_mmio_map_in(SysBusDevice *dev, int n, hwaddr addr,
+                        MemoryRegion *system_memory)
+{
+    sysbus_mmio_map_common(dev, n, addr, false, 0, system_memory);
+}
+
 void sysbus_mmio_map_overlap(SysBusDevice *dev, int n, hwaddr addr,
                              int priority)
 {
