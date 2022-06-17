@@ -149,7 +149,7 @@ static void aspeed_soc_ast1030_realize(DeviceState *dev_soc, Error **errp)
 {
     AspeedSoCState *s = ASPEED_SOC(dev_soc);
     AspeedSoCClass *sc = ASPEED_SOC_GET_CLASS(s);
-    MemoryRegion *system_memory = get_system_memory();
+    MemoryRegion *system_memory = s->system_memory;
     DeviceState *armv7m;
     Error *err = NULL;
     int i;

@@ -397,7 +397,7 @@ static void aspeed_machine_init(MachineState *machine)
                                 qdev_get_gpio_in_named(m25p80, SSI_GPIO_CS, 0));
     object_property_set_bool(OBJECT(spi_gpio->aspeed_gpio), "gpioX5", true, &error_fatal);
 
-    memory_region_add_subregion(get_system_memory(),
+    memory_region_add_subregion(bmc->soc.system_memory,
                                 sc->memmap[ASPEED_DEV_SDRAM],
                                 &bmc->ram_container);
 
@@ -429,12 +429,12 @@ static void aspeed_machine_init(MachineState *machine)
         if (ASPEED_MACHINE(machine)->mmio_exec) {
             memory_region_init_alias(boot_rom, NULL, "aspeed.boot_rom",
                                      &fl->mmio, 0, size);
-            memory_region_add_subregion(get_system_memory(), FIRMWARE_ADDR,
+            memory_region_add_subregion(bmc->soc.system_memory, FIRMWARE_ADDR,
                                         boot_rom);
         } else {
             memory_region_init_rom(boot_rom, NULL, "aspeed.boot_rom",
                                    size, &error_abort);
-            memory_region_add_subregion(get_system_memory(), FIRMWARE_ADDR,
+            memory_region_add_subregion(bmc->soc.system_memory, FIRMWARE_ADDR,
                                         boot_rom);
             write_boot_rom(drive0, FIRMWARE_ADDR, size, &error_abort);
         }
@@ -445,7 +445,7 @@ static void aspeed_machine_init(MachineState *machine)
         MemoryRegion *smpboot = g_new(MemoryRegion, 1);
         memory_region_init_ram(smpboot, NULL, "aspeed.smpboot",
                                0x80, &error_abort);
-        memory_region_add_subregion(get_system_memory(),
+        memory_region_add_subregion(bmc->soc.system_memory,
                                     AST_SMP_MAILBOX_BASE, smpboot);
 
         aspeed_board_binfo.write_secondary_boot = aspeed_write_smpboot;

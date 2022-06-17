@@ -255,7 +255,7 @@ static void aspeed_soc_realize(DeviceState *dev, Error **errp)
         error_propagate(errp, err);
         return;
     }
-    memory_region_add_subregion(get_system_memory(),
+    memory_region_add_subregion(s->system_memory,
                                 sc->memmap[ASPEED_DEV_SRAM], &s->sram);
 
     /* SCU */
@@ -551,14 +551,14 @@ void aspeed_soc_uart_init(AspeedSoCState *s)
     int i, uart;
 
     /* Attach an 8250 to the IO space as our UART */
-    serial_mm_init(get_system_memory(), sc->memmap[s->uart_default], 2,
+    serial_mm_init(s->system_memory, sc->memmap[s->uart_default], 2,
                    aspeed_soc_get_irq(s, s->uart_default), 38400,
                    serial_hd(0), DEVICE_LITTLE_ENDIAN);
     for (i = 1, uart = ASPEED_DEV_UART1; i < sc->uarts_num; i++, uart++) {
         if (uart == s->uart_default) {
             uart++;
         }
-        serial_mm_init(get_system_memory(), sc->memmap[uart], 2,
+        serial_mm_init(s->system_memory, sc->memmap[uart], 2,
                        aspeed_soc_get_irq(s, uart), 38400,
                        serial_hd(i), DEVICE_LITTLE_ENDIAN);
     }
