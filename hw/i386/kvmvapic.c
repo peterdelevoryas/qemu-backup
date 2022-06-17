@@ -584,7 +584,7 @@ static int vapic_map_rom_writable(VAPICROMState *s)
     size_t rom_size;
     uint8_t *ram;
 
-    as = sysbus_address_space(&s->busdev);
+    as = get_system_memory();
 
     if (s->rom_mapped_writable) {
         memory_region_del_subregion(as, &s->rom);
