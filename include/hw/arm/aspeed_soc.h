@@ -50,6 +50,7 @@ struct AspeedSoCState {
     ARMCPU cpu[ASPEED_CPUS_NUM];
     A15MPPrivState     a7mpcore;
     ARMv7MState        armv7m;
+    MemoryRegion *system_memory;
     MemoryRegion *dram_mr;
     MemoryRegion sram;
     AspeedVICState vic;
