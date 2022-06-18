@@ -24,7 +24,9 @@
 #include "qemu/units.h"
 #include "qapi/error.h"
 #include "hw/boards.h"
+#include "hw/qdev-clock.h"
 #include "hw/qdev-properties.h"
+#include "hw/arm/boot.h"
 #include "hw/arm/aspeed_soc.h"
 
 #define FBY35_BMC_NR_CPUS (2)
@@ -32,7 +34,9 @@
 #define FBY35_BMC_HW_STRAP1 (0x000000C0)
 #define FBY35_BMC_HW_STRAP2 (0x00000003)
 
-#define FBY35_MACHINE_NR_CPUS (FBY35_BMC_NR_CPUS)
+#define FBY35_BIC_NR_CPUS 1
+
+#define FBY35_MACHINE_NR_CPUS (FBY35_BMC_NR_CPUS + FBY35_BIC_NR_CPUS)
 #define FBY35_MACHINE_RAM_SIZE (FBY35_BMC_RAM_SIZE)
 
 #define TYPE_FBY35_MACHINE MACHINE_TYPE_NAME("fby35")
@@ -44,8 +48,11 @@ struct Fby35MachineState {
     MemoryRegion bmc_system_memory;
     MemoryRegion bmc_dram;
     MemoryRegion bmc_boot_rom;
+    MemoryRegion bic_system_memory;
+    Clock *bic_sysclk;
 
     AspeedSoCState bmc;
+    AspeedSoCState bic;
 };
 
 static void fby35_bmc_init(MachineState *machine)
@@ -53,7 +60,7 @@ static void fby35_bmc_init(MachineState *machine)
     Fby35MachineState *s = FBY35_MACHINE(machine);
     AspeedSoCClass *sc = NULL;
 
-    memory_region_init(&s->bmc_system_memory, OBJECT(s), "bmc-system-memory", UINT64_MAX);
+    memory_region_init(&s->bmc_system_memory, OBJECT(s), "bmc-system-memory", UINT64_MAX / 2);
     memory_region_init(&s->bmc_dram, OBJECT(s), "bmc-dram", FBY35_BMC_RAM_SIZE);
     memory_region_add_subregion(get_system_memory(), 0, &s->bmc_system_memory);
     memory_region_add_subregion(&s->bmc_dram, 0, machine->ram);
@@ -75,9 +82,32 @@ static void fby35_bmc_init(MachineState *machine)
     aspeed_board_init_flashes(&s->bmc.fmc, "n25q00", 2, 0);
 }
 
+static void fby35_bic_init(MachineState *machine)
+{
+    Fby35MachineState *s = FBY35_MACHINE(machine);
+
+    s->bic_sysclk = clock_new(OBJECT(s), "SYSCLK");
+    clock_set_hz(s->bic_sysclk, 200000000ULL);
+
+    memory_region_init(&s->bic_system_memory, OBJECT(s), "bic-system-memory", UINT64_MAX);
+
+    object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
+    qdev_connect_clock_in(DEVICE(&s->bic), "sysclk", s->bic_sysclk);
+    object_property_set_link(OBJECT(&s->bic), "system-memory", OBJECT(&s->bic_system_memory), &error_abort);
+    qdev_prop_set_uint32(DEVICE(&s->bic), "uart-default", ASPEED_DEV_UART5);
+    qdev_realize(DEVICE(&s->bic), NULL, &error_abort);
+
+    aspeed_board_init_flashes(&s->bic.fmc, "sst25vf032b", 2, 2);
+    aspeed_board_init_flashes(&s->bic.spi[0], "sst25vf032b", 2, 4);
+    aspeed_board_init_flashes(&s->bic.spi[1], "sst25vf032b", 2, 6);
+
+    armv7m_load_kernel(s->bic.armv7m.cpu, "Y35BCL.elf", 1 * MiB);
+}
+
 static void fby35_machine_init(MachineState *machine)
 {
     fby35_bmc_init(machine);
+    fby35_bic_init(machine);
 }
 
 static void fby35_machine_class_init(ObjectClass *oc, void *data)
