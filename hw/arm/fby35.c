@@ -23,7 +23,9 @@
 #include "qemu/osdep.h"
 #include "qemu/units.h"
 #include "qapi/error.h"
+#include "sysemu/reset.h"
 #include "hw/boards.h"
+#include "hw/core/cpu.h"
 #include "hw/qdev-clock.h"
 #include "hw/qdev-properties.h"
 #include "hw/arm/boot.h"
@@ -56,12 +58,23 @@ struct Fby35MachineState {
     AspeedSoCState bic;
 };
 
+static uint8_t bmc_firmware[128 * MiB];
+
+static void bmc_cpu_reset(void *opaque)
+{
+    CPUState *cpu = opaque;
+
+    cpu_reset(cpu);
+    cpu_set_pc(cpu, 0x00000000);
+    dma_memory_write(cpu->as, 0, bmc_firmware, sizeof(bmc_firmware), MEMTXATTRS_UNSPECIFIED);
+}
+
 static void fby35_bmc_init(MachineState *machine)
 {
     Fby35MachineState *s = FBY35_MACHINE(machine);
     AspeedSoCClass *sc = NULL;
 
-    memory_region_init(&s->bmc_system_memory, OBJECT(s), "bmc-system-memory", UINT64_MAX / 2);
+    memory_region_init(&s->bmc_system_memory, OBJECT(s), "bmc-system-memory", UINT64_MAX);
     memory_region_init(&s->bmc_dram, OBJECT(s), "bmc-dram", FBY35_BMC_RAM_SIZE);
     //memory_region_add_subregion(get_system_memory(), 0, &s->bmc_system_memory);
     memory_region_add_subregion(&s->bmc_dram, 0, machine->ram);
@@ -82,6 +95,21 @@ static void fby35_bmc_init(MachineState *machine)
     memory_region_add_subregion(&s->bmc_system_memory, 0, &s->bmc_boot_rom);
 
     aspeed_board_init_flashes(&s->bmc.fmc, "n25q00", 2, 0);
+
+    (void)bmc_cpu_reset;
+    {
+        printf("Reading fby35.mtd...");
+        fflush(stdout);
+        FILE *f = fopen("fby35.mtd", "r");
+        assert(fread(bmc_firmware, sizeof(bmc_firmware), 1, f) == 1);
+        fclose(f);
+        printf("done\n");
+    }
+
+    address_space_write_rom(CPU(&s->bmc.cpu[0])->as, 0, MEMTXATTRS_UNSPECIFIED, bmc_firmware, sizeof(bmc_firmware));
+
+    // dma_memory_write(CPU(&s->bmc.cpu[0])->as, 0, bmc_firmware, sizeof(bmc_firmware), MEMTXATTRS_UNSPECIFIED);
+    // qemu_register_reset(bmc_cpu_reset, CPU(&s->bmc.cpu[0]));
 }
 
 static void fby35_bic_init(MachineState *machine)
@@ -113,8 +141,10 @@ static void fby35_bic_init(MachineState *machine)
 
 static void fby35_machine_init(MachineState *machine)
 {
+    (void)fby35_bmc_init;
+    (void)fby35_bic_init;
+
     fby35_bmc_init(machine);
-    //(void)fby35_bmc_init;
     fby35_bic_init(machine);
 }
 

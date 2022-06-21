@@ -1238,6 +1238,8 @@ int rom_check_and_register_reset(void)
         if (rom->fw_file) {
             continue;
         }
+
+        printf("%s: rom->as->name %s rom->as->root->name %s\n", __func__, rom->as->name, rom->as->root->name);
         if (!rom->mr) {
             if (roms_overlap(last_rom, rom)) {
                 if (!found_overlap) {
