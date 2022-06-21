@@ -160,10 +160,10 @@ static void aspeed_soc_ast1030_realize(DeviceState *dev_soc, Error **errp)
     }
 
     /* General I/O memory space to catch all unimplemented device */
-    create_unimplemented_device("aspeed.sbc",
+    aspeed_create_unimplemented_device(s, "aspeed.sbc",
                                 sc->memmap[ASPEED_DEV_SBC],
                                 0x40000);
-    create_unimplemented_device("aspeed.io",
+    aspeed_create_unimplemented_device(s, "aspeed.io",
                                 sc->memmap[ASPEED_DEV_IOMEM],
                                 ASPEED_SOC_IOMEM_SIZE);
 

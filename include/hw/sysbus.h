@@ -84,6 +84,8 @@ void sysbus_mmio_map_in(SysBusDevice *dev, int n, hwaddr addr,
                         MemoryRegion *system_memory);
 void sysbus_mmio_map_overlap(SysBusDevice *dev, int n, hwaddr addr,
                              int priority);
+void sysbus_mmio_map_overlap_in(SysBusDevice *dev, int n, hwaddr addr,
+                                int priority, MemoryRegion *system_memory);
 void sysbus_add_io(SysBusDevice *dev, hwaddr addr,
                    MemoryRegion *mem);
 

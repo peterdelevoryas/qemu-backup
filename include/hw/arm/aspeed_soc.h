@@ -172,5 +172,6 @@ void aspeed_soc_uart_init(AspeedSoCState *s);
 void aspeed_soc_mmio_map(AspeedSoCState *s, SysBusDevice *dev, int n, hwaddr addr);
 void aspeed_board_init_flashes(AspeedSMCState *s, const char *flashtype,
                                unsigned int count, int unit0);
+void aspeed_create_unimplemented_device(AspeedSoCState *s, const char *name, hwaddr base, hwaddr size);
 
 #endif /* ASPEED_SOC_H */

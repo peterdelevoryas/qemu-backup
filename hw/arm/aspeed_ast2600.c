@@ -269,15 +269,15 @@ static void aspeed_soc_ast2600_realize(DeviceState *dev, Error **errp)
     qemu_irq irq;
 
     /* IO space */
-    create_unimplemented_device("aspeed_soc.io", sc->memmap[ASPEED_DEV_IOMEM],
+    aspeed_create_unimplemented_device(s, "aspeed_soc.io", sc->memmap[ASPEED_DEV_IOMEM],
                                 ASPEED_SOC_IOMEM_SIZE);
 
     /* Video engine stub */
-    create_unimplemented_device("aspeed.video", sc->memmap[ASPEED_DEV_VIDEO],
+    aspeed_create_unimplemented_device(s, "aspeed.video", sc->memmap[ASPEED_DEV_VIDEO],
                                 0x1000);
 
     /* eMMC Boot Controller stub */
-    create_unimplemented_device("aspeed.emmc-boot-controller",
+    aspeed_create_unimplemented_device(s, "aspeed.emmc-boot-controller",
                                 sc->memmap[ASPEED_DEV_EMMC_BC],
                                 0x1000);
 
@@ -292,6 +292,7 @@ static void aspeed_soc_ast2600_realize(DeviceState *dev, Error **errp)
 
         object_property_set_int(OBJECT(&s->cpu[i]), "cntfrq", 1125000000,
                                 &error_abort);
+        object_property_set_link(OBJECT(&s->cpu[i]), "memory", OBJECT(s->system_memory), &error_abort);
 
         if (!qdev_realize(DEVICE(&s->cpu[i]), NULL, errp)) {
             return;
@@ -333,7 +334,7 @@ static void aspeed_soc_ast2600_realize(DeviceState *dev, Error **errp)
                                 sc->memmap[ASPEED_DEV_SRAM], &s->sram);
 
     /* DPMCU */
-    create_unimplemented_device("aspeed.dpmcu", sc->memmap[ASPEED_DEV_DPMCU],
+    aspeed_create_unimplemented_device(s, "aspeed.dpmcu", sc->memmap[ASPEED_DEV_DPMCU],
                                 ASPEED_SOC_DPMCU_SIZE);
 
     /* SCU */

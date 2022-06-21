@@ -172,6 +172,12 @@ void sysbus_mmio_map_overlap(SysBusDevice *dev, int n, hwaddr addr,
     sysbus_mmio_map_common(dev, n, addr, true, priority, get_system_memory());
 }
 
+void sysbus_mmio_map_overlap_in(SysBusDevice *dev, int n, hwaddr addr,
+                                int priority, MemoryRegion *system_memory)
+{
+    sysbus_mmio_map_common(dev, n, addr, true, priority, system_memory);
+}
+
 /* Request an IRQ source.  The actual IRQ object may be populated later.  */
 void sysbus_init_irq(SysBusDevice *dev, qemu_irq *p)
 {

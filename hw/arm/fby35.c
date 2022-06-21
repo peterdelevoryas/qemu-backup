@@ -49,6 +49,7 @@ struct Fby35MachineState {
     MemoryRegion bmc_dram;
     MemoryRegion bmc_boot_rom;
     MemoryRegion bic_system_memory;
+    MemoryRegion bic_boot_rom;
     Clock *bic_sysclk;
 
     AspeedSoCState bmc;
@@ -62,13 +63,14 @@ static void fby35_bmc_init(MachineState *machine)
 
     memory_region_init(&s->bmc_system_memory, OBJECT(s), "bmc-system-memory", UINT64_MAX / 2);
     memory_region_init(&s->bmc_dram, OBJECT(s), "bmc-dram", FBY35_BMC_RAM_SIZE);
-    memory_region_add_subregion(get_system_memory(), 0, &s->bmc_system_memory);
+    //memory_region_add_subregion(get_system_memory(), 0, &s->bmc_system_memory);
     memory_region_add_subregion(&s->bmc_dram, 0, machine->ram);
 
     object_initialize_child(OBJECT(s), "bmc", &s->bmc, "ast2600-a3");
     object_property_set_int(OBJECT(&s->bmc), "ram-size", FBY35_BMC_RAM_SIZE, &error_abort);
     object_property_set_link(OBJECT(&s->bmc), "system-memory", OBJECT(&s->bmc_system_memory), &error_abort);
     object_property_set_link(OBJECT(&s->bmc), "dram", OBJECT(&s->bmc_dram), &error_abort);
+    //object_property_set_bool(OBJECT(&s->bmc.cpu[0]), "start-powered-off", true, &error_abort);
     qdev_prop_set_uint32(DEVICE(&s->bmc), "hw-strap1", FBY35_BMC_HW_STRAP1);
     qdev_prop_set_uint32(DEVICE(&s->bmc), "hw-strap2", FBY35_BMC_HW_STRAP2);
     qdev_prop_set_uint32(DEVICE(&s->bmc), "uart-default", ASPEED_DEV_UART5);
@@ -95,18 +97,24 @@ static void fby35_bic_init(MachineState *machine)
     qdev_connect_clock_in(DEVICE(&s->bic), "sysclk", s->bic_sysclk);
     object_property_set_link(OBJECT(&s->bic), "system-memory", OBJECT(&s->bic_system_memory), &error_abort);
     qdev_prop_set_uint32(DEVICE(&s->bic), "uart-default", ASPEED_DEV_UART5);
+    //object_property_set_bool(OBJECT(&s->bic.armv7m), "start-powered-off", true, &error_abort);
     qdev_realize(DEVICE(&s->bic), NULL, &error_abort);
+
+    // memory_region_init_rom(&s->bic_boot_rom, OBJECT(s), "bic-boot-rom", 128 * MiB, &error_abort);
+    // memory_region_add_subregion(&s->bic_system_memory, 0, &s->bic_boot_rom);
 
     aspeed_board_init_flashes(&s->bic.fmc, "sst25vf032b", 2, 2);
     aspeed_board_init_flashes(&s->bic.spi[0], "sst25vf032b", 2, 4);
     aspeed_board_init_flashes(&s->bic.spi[1], "sst25vf032b", 2, 6);
 
     armv7m_load_kernel(s->bic.armv7m.cpu, "Y35BCL.elf", 1 * MiB);
+    //armv7m_load_kernel(s->bic.armv7m.cpu, NULL, 1 * MiB);
 }
 
 static void fby35_machine_init(MachineState *machine)
 {
     fby35_bmc_init(machine);
+    //(void)fby35_bmc_init;
     fby35_bic_init(machine);
 }
 
@@ -118,6 +126,7 @@ static void fby35_machine_class_init(ObjectClass *oc, void *data)
     mc->init = fby35_machine_init;
     mc->no_floppy = 1;
     mc->no_cdrom = 1;
+    mc->no_parallel = 1;
     mc->default_ram_id = "ram";
     mc->min_cpus = FBY35_MACHINE_NR_CPUS;
     mc->max_cpus = FBY35_MACHINE_NR_CPUS;

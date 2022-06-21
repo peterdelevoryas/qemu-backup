@@ -595,3 +595,14 @@ void aspeed_board_init_flashes(AspeedSMCState *s, const char *flashtype,
         sysbus_connect_irq(SYS_BUS_DEVICE(s), i + 1, cs_line);
     }
 }
+
+void aspeed_create_unimplemented_device(AspeedSoCState *s, const char *name, hwaddr base, hwaddr size)
+{
+    DeviceState *dev = qdev_new(TYPE_UNIMPLEMENTED_DEVICE);
+    qdev_prop_set_string(dev, "name", name);
+    qdev_prop_set_uint64(dev, "size", size);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
+    sysbus_mmio_map_overlap_in(SYS_BUS_DEVICE(dev), 0, base, -1000, s->system_memory);
+}
+
+
