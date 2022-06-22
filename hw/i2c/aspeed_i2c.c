@@ -1300,6 +1300,13 @@ static void aspeed_i2c_realize(DeviceState *dev, Error **errp)
             return;
         }
 
+        if (i == 0 && s->bus0) {
+            assert(object_property_set_link(bus, "bus", OBJECT(s->bus0), errp));
+        }
+        if (i == 6 && s->bus2) {
+            assert(object_property_set_link(bus, "bus", OBJECT(s->bus2), errp));
+        }
+
         if (!sysbus_realize(SYS_BUS_DEVICE(bus), errp)) {
             return;
         }
@@ -1326,6 +1333,8 @@ static void aspeed_i2c_realize(DeviceState *dev, Error **errp)
 static Property aspeed_i2c_properties[] = {
     DEFINE_PROP_LINK("dram", AspeedI2CState, dram_mr,
                      TYPE_MEMORY_REGION, MemoryRegion *),
+    DEFINE_PROP_LINK("bus0", AspeedI2CState, bus0, TYPE_I2C_BUS, I2CBus *),
+    DEFINE_PROP_LINK("bus2", AspeedI2CState, bus2, TYPE_I2C_BUS, I2CBus *),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -1498,7 +1507,9 @@ static void aspeed_i2c_bus_realize(DeviceState *dev, Error **errp)
 
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq);
 
-    s->bus = i2c_init_bus(dev, name);
+    if (!s->bus) {
+        s->bus = i2c_init_bus(dev, name);
+    }
     s->slave = ASPEED_I2C_SLAVE(i2c_slave_create_simple(s->bus, TYPE_ASPEED_I2C_SLAVE, 0xff));
     s->slave->bus = s;
 
@@ -1511,6 +1522,8 @@ static Property aspeed_i2c_bus_properties[] = {
     DEFINE_PROP_UINT8("bus-id", AspeedI2CBus, id, 0),
     DEFINE_PROP_LINK("controller", AspeedI2CBus, controller, TYPE_ASPEED_I2C,
                      AspeedI2CState *),
+    DEFINE_PROP_LINK("bus", AspeedI2CBus, bus, TYPE_I2C_BUS,
+                     I2CBus *),
     DEFINE_PROP_END_OF_LIST(),
 };
 

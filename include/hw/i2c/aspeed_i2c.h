@@ -81,6 +81,9 @@ struct AspeedI2CState {
     MemoryRegion iomem;
     qemu_irq irq;
 
+    I2CBus *bus0;
+    I2CBus *bus2;
+
     uint32_t intr_status;
     uint32_t ctrl_global;
     uint32_t new_divider;

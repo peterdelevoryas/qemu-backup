@@ -30,6 +30,7 @@
 #include "hw/qdev-properties.h"
 #include "hw/arm/boot.h"
 #include "hw/arm/aspeed_soc.h"
+#include "hw/i2c/i2c.h"
 
 #define FBY35_BMC_NR_CPUS (2)
 #define FBY35_BMC_RAM_SIZE (2 * GiB)
@@ -44,6 +45,13 @@
 #define TYPE_FBY35_MACHINE MACHINE_TYPE_NAME("fby35")
 OBJECT_DECLARE_SIMPLE_TYPE(Fby35MachineState, FBY35_MACHINE);
 
+#define TYPE_FBY35_SYSTEM_BUS "fby35-system-bus"
+OBJECT_DECLARE_SIMPLE_TYPE(Fby35SystemBus, FBY35_SYSTEM_BUS);
+
+struct Fby35SystemBus {
+    SysBusDevice parent_obj;
+};
+
 struct Fby35MachineState {
     MachineState parent_obj;
 
@@ -53,6 +61,8 @@ struct Fby35MachineState {
     MemoryRegion bic_system_memory;
     MemoryRegion bic_boot_rom;
     Clock *bic_sysclk;
+    I2CBus *slot0_i2c_bus;
+    Fby35SystemBus system_bus;
 
     AspeedSoCState bmc;
     AspeedSoCState bic;
@@ -83,6 +93,7 @@ static void fby35_bmc_init(MachineState *machine)
     object_property_set_int(OBJECT(&s->bmc), "ram-size", FBY35_BMC_RAM_SIZE, &error_abort);
     object_property_set_link(OBJECT(&s->bmc), "system-memory", OBJECT(&s->bmc_system_memory), &error_abort);
     object_property_set_link(OBJECT(&s->bmc), "dram", OBJECT(&s->bmc_dram), &error_abort);
+    object_property_set_link(OBJECT(&s->bmc), "i2c-bus0", OBJECT(s->slot0_i2c_bus), &error_abort);
     //object_property_set_bool(OBJECT(&s->bmc.cpu[0]), "start-powered-off", true, &error_abort);
     qdev_prop_set_uint32(DEVICE(&s->bmc), "hw-strap1", FBY35_BMC_HW_STRAP1);
     qdev_prop_set_uint32(DEVICE(&s->bmc), "hw-strap2", FBY35_BMC_HW_STRAP2);
@@ -95,6 +106,11 @@ static void fby35_bmc_init(MachineState *machine)
     memory_region_add_subregion(&s->bmc_system_memory, 0, &s->bmc_boot_rom);
 
     aspeed_board_init_flashes(&s->bmc.fmc, "n25q00", 2, 0);
+
+    for (int i = 4; i < 8; i++) {
+        I2CBus *i2c = aspeed_i2c_get_bus(&s->bmc.i2c, i);
+        i2c_slave_create_simple(i2c, "fby35-cpld", 0xf);
+    }
 
     (void)bmc_cpu_reset;
     {
@@ -124,6 +140,7 @@ static void fby35_bic_init(MachineState *machine)
     object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
     qdev_connect_clock_in(DEVICE(&s->bic), "sysclk", s->bic_sysclk);
     object_property_set_link(OBJECT(&s->bic), "system-memory", OBJECT(&s->bic_system_memory), &error_abort);
+    object_property_set_link(OBJECT(&s->bic), "i2c-bus2", OBJECT(s->slot0_i2c_bus), &error_abort);
     qdev_prop_set_uint32(DEVICE(&s->bic), "uart-default", ASPEED_DEV_UART5);
     //object_property_set_bool(OBJECT(&s->bic.armv7m), "start-powered-off", true, &error_abort);
     qdev_realize(DEVICE(&s->bic), NULL, &error_abort);
@@ -137,12 +154,29 @@ static void fby35_bic_init(MachineState *machine)
 
     armv7m_load_kernel(s->bic.armv7m.cpu, "Y35BCL.elf", 1 * MiB);
     //armv7m_load_kernel(s->bic.armv7m.cpu, NULL, 1 * MiB);
+
+    I2CBus *i2c[14];
+    for (int i = 0; i < 14; i++) {
+        i2c[i] = aspeed_i2c_get_bus(&s->bic.i2c, i);
+    }
+    aspeed_eeprom_init(i2c[1], 0x71, 64 * KiB);
+    aspeed_eeprom_init(i2c[6], 0x20, 64 * KiB);
+    aspeed_eeprom_init(i2c[7], 0x20, 64 * KiB);
+    aspeed_eeprom_init(i2c[8], 0x20, 64 * KiB);
 }
 
 static void fby35_machine_init(MachineState *machine)
 {
+    Fby35MachineState *s = FBY35_MACHINE(machine);
+
     (void)fby35_bmc_init;
     (void)fby35_bic_init;
+
+    object_initialize_child(OBJECT(s), "system-bus", &s->system_bus, TYPE_FBY35_SYSTEM_BUS);
+    sysbus_realize(SYS_BUS_DEVICE(&s->system_bus), &error_abort);
+    s->slot0_i2c_bus = i2c_init_bus(DEVICE(&s->system_bus), "slot0_i2c_bus");
+
+    aspeed_eeprom_init(s->slot0_i2c_bus, 0x16, 64 * KiB);
 
     fby35_bmc_init(machine);
     fby35_bic_init(machine);
@@ -170,6 +204,10 @@ static const TypeInfo fby35_types[] = {
         .parent = TYPE_MACHINE,
         .class_init = fby35_machine_class_init,
         .instance_size = sizeof(Fby35MachineState),
+    },
+    {
+        .name = TYPE_FBY35_SYSTEM_BUS,
+        .parent = TYPE_SYS_BUS_DEVICE,
     },
 };
 

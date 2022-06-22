@@ -119,6 +119,7 @@ static void aspeed_soc_ast1030_init(Object *obj)
 
     snprintf(typename, sizeof(typename), "aspeed.i2c-%s", socname);
     object_initialize_child(obj, "i2c", &s->i2c, typename);
+    object_property_add_alias(obj, "i2c-bus2", OBJECT(&s->i2c), "bus2");
 
     snprintf(typename, sizeof(typename), "aspeed.timer-%s", socname);
     object_initialize_child(obj, "timerctrl", &s->timerctrl, typename);

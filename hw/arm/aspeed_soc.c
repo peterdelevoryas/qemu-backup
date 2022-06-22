@@ -605,4 +605,12 @@ void aspeed_create_unimplemented_device(AspeedSoCState *s, const char *name, hwa
     sysbus_mmio_map_overlap_in(SYS_BUS_DEVICE(dev), 0, base, -1000, s->system_memory);
 }
 
+void aspeed_eeprom_init(I2CBus *bus, uint8_t addr, uint32_t rsize)
+{
+    I2CSlave *i2c_dev = i2c_slave_new("at24c-eeprom", addr);
+    DeviceState *dev = DEVICE(i2c_dev);
 
+    qdev_prop_set_uint32(dev, "rom-size", rsize);
+    qdev_prop_set_bit(dev, "writable", true);
+    i2c_slave_realize_and_unref(i2c_dev, bus, &error_abort);
+}
