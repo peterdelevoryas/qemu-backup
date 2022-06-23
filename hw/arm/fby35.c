@@ -79,6 +79,22 @@ static void bmc_cpu_reset(void *opaque)
     dma_memory_write(cpu->as, 0, bmc_firmware, sizeof(bmc_firmware), MEMTXATTRS_UNSPECIFIED);
 }
 
+static void pull_up(void *opaque, int n, int level)
+{
+    printf("PULL UP\n");
+
+    Object *obj = opaque;
+    object_property_set_bool(obj, "gpioV4", true, &error_abort);
+    object_property_set_bool(obj, "gpioV5", true, &error_abort);
+    object_property_set_bool(obj, "gpioV6", true, &error_abort);
+    object_property_set_bool(obj, "gpioV7", false, &error_abort);
+
+    object_property_set_bool(obj, "gpioB2", true, &error_abort);
+    object_property_set_bool(obj, "gpioB3", true, &error_abort);
+    object_property_set_bool(obj, "gpioB4", true, &error_abort);
+    object_property_set_bool(obj, "gpioB5", true, &error_abort);
+}
+
 static void fby35_bmc_init(MachineState *machine)
 {
     Fby35MachineState *s = FBY35_MACHINE(machine);
@@ -160,9 +176,9 @@ static void fby35_bic_init(MachineState *machine)
         i2c[i] = aspeed_i2c_get_bus(&s->bic.i2c, i);
     }
     aspeed_eeprom_init(i2c[1], 0x71, 64 * KiB);
-    aspeed_eeprom_init(i2c[6], 0x20, 64 * KiB);
     aspeed_eeprom_init(i2c[7], 0x20, 64 * KiB);
     aspeed_eeprom_init(i2c[8], 0x20, 64 * KiB);
+    i2c_slave_create_simple(i2c[2], "intel-me", 0x16);
 }
 
 static void fby35_machine_init(MachineState *machine)
@@ -176,10 +192,21 @@ static void fby35_machine_init(MachineState *machine)
     sysbus_realize(SYS_BUS_DEVICE(&s->system_bus), &error_abort);
     s->slot0_i2c_bus = i2c_init_bus(DEVICE(&s->system_bus), "slot0_i2c_bus");
 
-    aspeed_eeprom_init(s->slot0_i2c_bus, 0x16, 64 * KiB);
+    // aspeed_eeprom_init(s->slot0_i2c_bus, 0x16, 64 * KiB);
 
     fby35_bmc_init(machine);
     fby35_bic_init(machine);
+
+    pull_up(&s->bmc.gpio, 0, false);
+    qdev_init_gpio_in_named(DEVICE(&s->bmc.gpio), pull_up, "pull-up", 1);
+    qdev_connect_gpio_out_named(DEVICE(&s->bmc.gpio), "sysbus-irq", 173,
+                                qdev_get_gpio_in_named(DEVICE(&s->bmc.gpio), "pull-up", 0));
+
+    BusChild *kid;
+    QTAILQ_FOREACH(kid, &s->slot0_i2c_bus->qbus.children, sibling) {
+        I2CSlave *dev = I2C_SLAVE(kid->child);
+        printf("slot0 bus has slave 0x%02x\n", dev->address);
+    }
 }
 
 static void fby35_machine_class_init(ObjectClass *oc, void *data)

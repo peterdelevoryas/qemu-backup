@@ -149,12 +149,15 @@ static int i2c_do_start_transfer(I2CBus *bus, uint8_t address,
     }
 
     if (QLIST_EMPTY(&bus->current_devs)) {
+        printf("I2C SCAN UNSUCCESSFUL\n");
         return 1;
     }
 
     QLIST_FOREACH(node, &bus->current_devs, next) {
         I2CSlave *s = node->elt;
         int rv;
+
+        printf("SLAVE ADDR PREPARING FOR TRANSFER 0x%02x\n", s->address);
 
         sc = I2C_SLAVE_GET_CLASS(s);
         /* If the bus is already busy, assume this is a repeated

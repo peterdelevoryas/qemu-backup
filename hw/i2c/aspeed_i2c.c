@@ -543,6 +543,7 @@ static int aspeed_i2c_bus_send(AspeedI2CBus *bus, uint8_t pool_start)
         bus->cmd &= ~I2CD_TX_DMA_ENABLE;
     } else {
         trace_aspeed_i2c_bus_send("BYTE", pool_start, 1, bus->buf);
+        printf("i2c_send i2c%d 0x%08x\n", bus->id, bus->buf);
         ret = i2c_send(bus->bus, bus->buf);
     }
 
@@ -705,6 +706,8 @@ static void aspeed_i2c_bus_handle_cmd_new(AspeedI2CBus *bus, uint64_t value)
         /* Send I2C_START event */
         uint8_t addr = aspeed_i2c_get_addr(bus);
         if (aspeed_i2c_get_state(bus) == I2CM_PKT_OP_SM_IDLE) {
+            if (bus->id != 1 && bus->id != 2)
+                printf("i2c_start_transfer_new: i2c%d 0x%02x\n", bus->id, extract32(addr, 1, 7));
             if (i2c_start_transfer(bus->bus, extract32(addr, 1, 7),
                                    extract32(addr, 0, 1))) {
                 bus->intr_status |= I2CM_TX_NAK | I2CM_PKT_ERROR;
@@ -747,6 +750,8 @@ static void aspeed_i2c_bus_handle_cmd_new(AspeedI2CBus *bus, uint64_t value)
         if (bus->cmd & I2CM_START_CMD &&
             aspeed_i2c_get_state(bus) != I2CM_PKT_OP_SM_STARTR) {
             /* Repeated Start */
+            if (bus->id != 1 && bus->id != 2)
+                printf("i2c_start_transfer repeated i2c%d 0x%02x\n", bus->id, extract32(addr, 1, 7));
             i2c_start_transfer(bus->bus, extract32(addr, 1, 7), extract32(addr, 0, 1));
             aspeed_i2c_set_state(bus, I2CM_PKT_OP_SM_STARTR);
         }
@@ -816,11 +821,17 @@ static void aspeed_i2c_bus_handle_cmd(AspeedI2CBus *bus, uint64_t value)
 
         addr = aspeed_i2c_get_addr(bus);
 
+        if (bus->id != 1 && bus->id != 2)
+            printf("i2c_start_transfer: i2c%d 0x%02x: ", bus->id, extract32(addr, 1, 7));
         if (i2c_start_transfer(bus->bus, extract32(addr, 1, 7),
                                extract32(addr, 0, 1))) {
             bus->intr_status |= I2CD_INTR_TX_NAK;
+            if (bus->id != 1 && bus->id != 2)
+                printf("nak\n");
         } else {
             bus->intr_status |= I2CD_INTR_TX_ACK;
+            if (bus->id != 1 && bus->id != 2)
+                printf("ack\n");
         }
 
         bus->cmd &= ~I2CD_M_START_CMD;
@@ -978,6 +989,7 @@ static void aspeed_i2c_bus_write_new(void *opaque, hwaddr offset,
         bus->slave_cmd = value;
         break;
     case I2CS_SA_REG:
+        printf("DMA NEW MODE: i2c%d Setting slave address to 0x%02lx\n", bus->id, value);
         bus->dev_addr = value;
         break;
     case I2CS_DMA_LEN:
@@ -1429,6 +1441,8 @@ static void aspeed_i2c_slave_send_async_new(AspeedI2CBus *bus, uint8_t data)
                                              MEMTXATTRS_UNSPECIFIED, &data, 1);
     assert(result == MEMTX_OK);
 
+    printf("SLAVE SEND ASYNC DMA: i2c%d 0x%02x\n", bus->id, data);
+
     bus->slave_dma_addr++;
     bus->slave_dma_len--;
     bus->slave_dma_len_rx++;
@@ -1440,6 +1454,9 @@ static void aspeed_i2c_slave_send_async(I2CSlave *slave, uint8_t data)
 {
     AspeedI2CSlave *s = ASPEED_I2C_SLAVE(slave);
     AspeedI2CBus *bus = s->bus;
+
+    if (bus->id != 1 && bus->id != 2)
+        printf("%s: i2c%d 0x%02x 0x%02x\n", __func__, bus->id, slave->address, data);
 
     if (aspeed_i2c_bus_is_new_mode(bus)) {
         return aspeed_i2c_slave_send_async_new(bus, data);

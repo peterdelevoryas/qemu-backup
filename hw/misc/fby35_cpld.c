@@ -26,11 +26,13 @@ static int fby35_cpld_i2c_event(I2CSlave *i2c, enum i2c_event event)
 
 static uint8_t fby35_cpld_i2c_recv(I2CSlave *i2c)
 {
+    printf("FBY35 CPLD RETURNING 0xff\n");
     return 0xff;
 }
 
 static int fby35_cpld_i2c_send(I2CSlave *i2c, uint8_t byte)
 {
+    printf("FBY35 CPLD RECEIVING addr 0x%02x data 0x%02x\n", i2c->address, byte);
     //Fby35Cpld *s = FBY35_CPLD(i2c);
 
     return 0;
