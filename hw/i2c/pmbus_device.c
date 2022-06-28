@@ -1088,6 +1088,11 @@ static int pmbus_write_data(SMBusDevice *smd, uint8_t *buf, uint8_t len)
 
     if (pmdev->code == PMBUS_PAGE) {
         pmdev->page = pmbus_receive8(pmdev);
+        /*
+         * Reset the output buffer if the page command is issued, even if
+         * the value didn't change.
+         */
+        pmdev->out_buf_len = 0;
         return 0;
     }
 
