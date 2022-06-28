@@ -533,6 +533,7 @@ class BootLinuxConsole(LinuxKernelTest):
         self.wait_for_console_pattern('Boot successful.')
         # TODO user command, for now the uart is stuck
 
+    @skip("pdel@fb.com: This test is flaky")
     def test_arm_cubieboard_initrd(self):
         """
         :avocado: tags=arch:arm
