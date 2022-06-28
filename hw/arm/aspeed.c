@@ -1447,6 +1447,7 @@ static void oby35_cl_i2c_init(AspeedMachineState *bmc)
     i2c_slave_create_simple(i2c[1], "tmp105", 0x4a);
     i2c_slave_create_simple(i2c[1], "adm1272", 0x40);
     i2c_slave_create_simple(i2c[1], "tmp421", 0x4c);
+    i2c_slave_create_simple(i2c[2], "intel-me", 0x16);
     i2c_slave_create_simple(i2c[4], "isl69259", 0x76);
     i2c_slave_create_simple(i2c[4], "isl69259", 0x62);
     i2c_slave_create_simple(i2c[4], "isl69259", 0x60);
