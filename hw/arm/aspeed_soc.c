@@ -21,6 +21,7 @@
 #include "hw/i2c/aspeed_i2c.h"
 #include "net/net.h"
 #include "sysemu/sysemu.h"
+#include "sysemu/blockdev.h"
 
 #define ASPEED_SOC_IOMEM_SIZE       0x00200000
 
@@ -647,4 +648,29 @@ void aspeed_mmio_map_unimplemented(AspeedSoCState *s, SysBusDevice *dev,
 
     memory_region_add_subregion_overlap(s->memory, addr,
                                         sysbus_mmio_get_region(dev, 0), -1000);
+}
+
+void aspeed_board_init_flashes(AspeedSMCState *s, const char *flashtype,
+                               unsigned int count, int unit0)
+{
+    int i;
+
+    if (!flashtype) {
+        return;
+    }
+
+    for (i = 0; i < count; ++i) {
+        DriveInfo *dinfo = drive_get(IF_MTD, 0, unit0 + i);
+        qemu_irq cs_line;
+        DeviceState *dev;
+
+        dev = qdev_new(flashtype);
+        if (dinfo) {
+            qdev_prop_set_drive(dev, "drive", blk_by_legacy_dinfo(dinfo));
+        }
+        qdev_realize_and_unref(dev, BUS(s->spi), &error_fatal);
+
+        cs_line = qdev_get_gpio_in_named(dev, SSI_GPIO_CS, 0);
+        sysbus_connect_irq(SYS_BUS_DEVICE(s), i + 1, cs_line);
+    }
 }
