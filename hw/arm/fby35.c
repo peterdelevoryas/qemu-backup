@@ -24,7 +24,15 @@
 #include "qemu/units.h"
 #include "qapi/error.h"
 #include "hw/boards.h"
+#include "hw/qdev-clock.h"
 #include "hw/arm/aspeed_soc.h"
+#include "hw/arm/boot.h"
+
+#define FBY35_BMC_NR_CPUS 2
+
+#define FBY35_BIC_NR_CPUS 1
+
+#define FBY35_MACHINE_NR_CPUS (FBY35_BMC_NR_CPUS + FBY35_BIC_NR_CPUS)
 
 #define TYPE_FBY35 MACHINE_TYPE_NAME("fby35")
 OBJECT_DECLARE_SIMPLE_TYPE(Fby35State, FBY35);
@@ -35,8 +43,11 @@ struct Fby35State {
     MemoryRegion bmc_memory;
     MemoryRegion bmc_dram;
     MemoryRegion bmc_boot_rom;
+    MemoryRegion bic_memory;
+    Clock *bic_sysclk;
 
     AspeedSoCState bmc;
+    AspeedSoCState bic;
 };
 
 #define FBY35_BMC_RAM_SIZE (2 * GiB)
@@ -58,11 +69,32 @@ static void fby35_bmc_init(Fby35State *s)
     aspeed_board_init_flashes(&s->bmc.fmc, "n25q00", 2, 0);
 }
 
+static void fby35_bic_init(Fby35State *s)
+{
+    s->bic_sysclk = clock_new(OBJECT(s), "SYSCLK");
+    clock_set_hz(s->bic_sysclk, 200000000ULL);
+
+    memory_region_init(&s->bic_memory, OBJECT(s), "bic-memory", UINT64_MAX);
+
+    object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
+    qdev_connect_clock_in(DEVICE(&s->bic), "sysclk", s->bic_sysclk);
+    object_property_set_link(OBJECT(&s->bic), "memory", OBJECT(&s->bic_memory), &error_abort);
+    qdev_prop_set_uint32(DEVICE(&s->bic), "uart-default", ASPEED_DEV_UART5);
+    qdev_realize(DEVICE(&s->bic), NULL, &error_abort);
+
+    aspeed_board_init_flashes(&s->bic.fmc, "sst25vf032b", 2, 2);
+    aspeed_board_init_flashes(&s->bic.spi[0], "sst25vf032b", 2, 4);
+    aspeed_board_init_flashes(&s->bic.spi[1], "sst25vf032b", 2, 6);
+
+    armv7m_load_kernel(s->bic.armv7m.cpu, "Y35BCL.elf", 1 * MiB);
+}
+
 static void fby35_init(MachineState *machine)
 {
     Fby35State *s = FBY35(machine);
 
     fby35_bmc_init(s);
+    fby35_bic_init(s);
 }
 
 static void fby35_class_init(ObjectClass *oc, void *data)
@@ -73,7 +105,7 @@ static void fby35_class_init(ObjectClass *oc, void *data)
     mc->init = fby35_init;
     mc->no_floppy = 1;
     mc->no_cdrom = 1;
-    mc->min_cpus = mc->max_cpus = mc->default_cpus = 2;
+    mc->min_cpus = mc->max_cpus = mc->default_cpus =  FBY35_MACHINE_NR_CPUS;
 }
 
 static const TypeInfo fby35_types[] = {

@@ -345,7 +345,7 @@ static void aspeed_soc_ast2600_realize(DeviceState *dev, Error **errp)
     }
 
     /* SRAM */
-    memory_region_init_ram(&s->sram, OBJECT(dev), "aspeed.sram",
+    memory_region_init_ram(&s->sram, OBJECT(dev), "aspeed.ast2600.sram",
                            sc->sram_size, &err);
     if (err) {
         error_propagate(errp, err);
