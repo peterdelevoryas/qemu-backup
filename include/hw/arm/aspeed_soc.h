@@ -38,6 +38,7 @@
 #include "hw/misc/unimp.h"
 #include "hw/misc/aspeed_peci.h"
 #include "hw/misc/aspeed_pwm.h"
+#include "hw/fsi/aspeed-apb2opb.h"
 
 #define ASPEED_SPIS_NUM  2
 #define ASPEED_EHCIS_NUM 2
@@ -89,6 +90,7 @@ struct AspeedSoCState {
     UnimplementedDeviceState emmc_boot_controller;
     UnimplementedDeviceState dpmcu;
     AspeedPWMState pwm;
+    AspeedAPB2OPBState fsi[2];
 };
 
 #define TYPE_ASPEED_SOC "aspeed-soc"
@@ -176,6 +178,8 @@ enum {
     ASPEED_DEV_DPMCU,
     ASPEED_DEV_DP,
     ASPEED_DEV_I3C,
+    ASPEED_DEV_FSI1,
+    ASPEED_DEV_FSI2,
 };
 
 qemu_irq aspeed_soc_get_irq(AspeedSoCState *s, int dev);
