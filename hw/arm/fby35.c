@@ -25,10 +25,12 @@
 #include "qapi/error.h"
 #include "hw/boards.h"
 #include "hw/qdev-clock.h"
+#include "sysemu/block-backend.h"
 #include "hw/arm/aspeed_soc.h"
 #include "hw/arm/boot.h"
 
 #define FBY35_BMC_NR_CPUS 2
+#define FBY35_BMC_RAM_SIZE (2 * GiB)
 
 #define FBY35_BIC_NR_CPUS 1
 
@@ -50,10 +52,44 @@ struct Fby35State {
     AspeedSoCState bic;
 };
 
-#define FBY35_BMC_RAM_SIZE (2 * GiB)
+#define FIRMWARE_ADDR 0x0
+
+static void fby35_bmc_write_boot_rom(DriveInfo *dinfo, MemoryRegion *mr,
+                                     hwaddr offset, size_t rom_size,
+                                     Error **errp)
+{
+    BlockBackend *blk = blk_by_legacy_dinfo(dinfo);
+    g_autofree void *storage = NULL;
+    int64_t size;
+
+    /* The block backend size should have already been 'validated' by
+     * the creation of the m25p80 object.
+     */
+    size = blk_getlength(blk);
+    if (size <= 0) {
+        error_setg(errp, "failed to get flash size");
+        return;
+    }
+
+    if (rom_size > size) {
+        rom_size = size;
+    }
+
+    storage = g_malloc0(rom_size);
+    if (blk_pread(blk, 0, storage, rom_size) < 0) {
+        error_setg(errp, "failed to read the initial flash content");
+        return;
+    }
+
+    mempcpy(memory_region_get_ram_ptr(mr) + offset, storage, rom_size);
+}
+
+static bool mmio_exec = false;
 
 static void fby35_bmc_init(Fby35State *s)
 {
+    DriveInfo *drive0 = drive_get(IF_MTD, 0, 0);
+
     memory_region_init(&s->bmc_memory, OBJECT(s), "bmc-memory", UINT64_MAX);
     memory_region_init_ram(&s->bmc_dram, OBJECT(s), "bmc-dram", FBY35_BMC_RAM_SIZE, &error_abort);
 
@@ -67,6 +103,27 @@ static void fby35_bmc_init(Fby35State *s)
     qdev_realize(DEVICE(&s->bmc), NULL, &error_abort);
 
     aspeed_board_init_flashes(&s->bmc.fmc, "n25q00", 2, 0);
+
+    /* Install first FMC flash content as a boot rom. */
+    if (drive0) {
+        AspeedSMCFlash *fl = &s->bmc.fmc.flashes[0];
+        MemoryRegion *boot_rom = g_new(MemoryRegion, 1);
+        uint64_t size = memory_region_size(&fl->mmio);
+
+        if (mmio_exec) {
+            memory_region_init_alias(boot_rom, NULL, "aspeed.boot_rom",
+                                     &fl->mmio, 0, size);
+            memory_region_add_subregion(&s->bmc_memory, FIRMWARE_ADDR, boot_rom);
+        } else {
+
+            memory_region_init_rom(boot_rom, NULL, "aspeed.boot_rom",
+                                   size, &error_abort);
+            memory_region_add_subregion(&s->bmc_memory, FIRMWARE_ADDR,
+                                        boot_rom);
+            fby35_bmc_write_boot_rom(drive0, boot_rom, FIRMWARE_ADDR, size,
+                                     &error_abort);
+        }
+    }
 }
 
 static void fby35_bic_init(Fby35State *s)
