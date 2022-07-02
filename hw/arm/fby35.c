@@ -15,6 +15,7 @@
 #include "hw/arm/aspeed_soc.h"
 #include "hw/arm/boot.h"
 #include "hw/arm/fby35.h"
+#include "hw/i2c/i2c.h"
 #include "hw/i2c/i2c_mux_pca954x.h"
 
 #define FBY35_BMC_NR_CPUS 2
@@ -81,7 +82,6 @@ static void fby35_bmc_init(Fby35State *s)
     memory_region_init(&s->bmc_memory, OBJECT(s), "bmc-memory", UINT64_MAX);
     memory_region_init_ram(&s->bmc_dram, OBJECT(s), "bmc-dram", FBY35_BMC_RAM_SIZE, &error_abort);
 
-    object_initialize_child(OBJECT(s), "bmc", &s->bmc, "ast2600-a3");
     object_property_set_int(OBJECT(&s->bmc), "ram-size", FBY35_BMC_RAM_SIZE, &error_abort);
     object_property_set_link(OBJECT(&s->bmc), "memory", OBJECT(&s->bmc_memory), &error_abort);
     object_property_set_link(OBJECT(&s->bmc), "dram", OBJECT(&s->bmc_dram), &error_abort);
@@ -121,7 +121,6 @@ static void fby35_bic_init(Fby35State *s)
 
     memory_region_init(&s->bic_memory, OBJECT(s), "bic-memory", UINT64_MAX);
 
-    object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
     qdev_connect_clock_in(DEVICE(&s->bic), "sysclk", s->bic_sysclk);
     object_property_set_link(OBJECT(&s->bic), "memory", OBJECT(&s->bic_memory), &error_abort);
     aspeed_soc_uart_set_chr(&s->bic, ASPEED_DEV_UART5, serial_hd(1));
@@ -170,8 +169,18 @@ void fby35_cl_bic_i2c_init(AspeedSoCState *s)
 static void fby35_init(MachineState *machine)
 {
     Fby35State *s = FBY35(machine);
+    I2CBus *slot_i2c[4];
+
+    object_initialize_child(OBJECT(s), "bmc", &s->bmc, "ast2600-a3");
+    object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
 
     fby35_bmc_init(s);
+
+    for (int i = 0; i < ARRAY_SIZE(slot_i2c); i++) {
+        slot_i2c[i] = aspeed_soc_i2c_bus(&s->bmc, i);
+    }
+    aspeed_soc_i2c_set_bus(&s->bic, 6, slot_i2c[0]);
+
     fby35_bic_init(s);
 }
 
