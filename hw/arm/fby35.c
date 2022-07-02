@@ -26,6 +26,7 @@
 #include "hw/boards.h"
 #include "hw/qdev-clock.h"
 #include "sysemu/block-backend.h"
+#include "sysemu/sysemu.h"
 #include "hw/arm/aspeed_soc.h"
 #include "hw/arm/boot.h"
 
@@ -99,7 +100,7 @@ static void fby35_bmc_init(Fby35State *s)
     object_property_set_link(OBJECT(&s->bmc), "dram", OBJECT(&s->bmc_dram), &error_abort);
     object_property_set_int(OBJECT(&s->bmc), "hw-strap1", 0x000000C0, &error_abort);
     object_property_set_int(OBJECT(&s->bmc), "hw-strap2", 0x00000003, &error_abort);
-    object_property_set_int(OBJECT(&s->bmc), "uart-default", ASPEED_DEV_UART5, &error_abort);
+    aspeed_soc_uart_set_chr(&s->bmc, ASPEED_DEV_UART5, serial_hd(0));
     qdev_realize(DEVICE(&s->bmc), NULL, &error_abort);
 
     aspeed_board_init_flashes(&s->bmc.fmc, "n25q00", 2, 0);
@@ -136,7 +137,7 @@ static void fby35_bic_init(Fby35State *s)
     object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
     qdev_connect_clock_in(DEVICE(&s->bic), "sysclk", s->bic_sysclk);
     object_property_set_link(OBJECT(&s->bic), "memory", OBJECT(&s->bic_memory), &error_abort);
-    qdev_prop_set_uint32(DEVICE(&s->bic), "uart-default", ASPEED_DEV_UART5);
+    aspeed_soc_uart_set_chr(&s->bic, ASPEED_DEV_UART5, serial_hd(1));
     qdev_realize(DEVICE(&s->bic), NULL, &error_abort);
 
     aspeed_board_init_flashes(&s->bic.fmc, "sst25vf032b", 2, 2);
