@@ -1591,7 +1591,7 @@ static void oby35_cl_i2c_init(AspeedMachineState *bmc)
     for (i = 0; i < 14; i++) {
         i2c[i] = aspeed_i2c_get_bus(&soc->i2c, i);
     }
-    get_pca9548_channels(i2c[1], 0x71, ssd);
+    pca954x_i2c_get_channels(i2c[1], 0x71, "pca9548", ssd);
 
     i2c_slave_create_simple(i2c[0], "fby35-sb-cpld", 0x21);
     i2c_slave_create_simple(i2c[1], "tmp105", 0x48);
