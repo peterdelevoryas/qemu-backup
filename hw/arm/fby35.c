@@ -192,6 +192,7 @@ static void fby35_class_init(ObjectClass *oc, void *data)
     mc->init = fby35_init;
     mc->no_floppy = 1;
     mc->no_cdrom = 1;
+    mc->no_parallel = 1;
     mc->min_cpus = mc->max_cpus = mc->default_cpus =  FBY35_MACHINE_NR_CPUS;
 }
 
