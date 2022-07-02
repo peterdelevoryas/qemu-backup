@@ -11,6 +11,7 @@
 #include "qemu/log.h"
 #include "hw/i2c/i2c.h"
 #include "hw/registerfields.h"
+#include "trace.h"
 
 #define BOARD_ID_CLASS1 0b0000
 #define BOARD_ID_CLASS2 0b0001
@@ -69,16 +70,22 @@ static int fby35_sb_cpld_i2c_event(I2CSlave *i2c, enum i2c_event event)
 static uint8_t fby35_sb_cpld_i2c_recv(I2CSlave *i2c)
 {
     Fby35SbCpldState *s = FBY35_SB_CPLD(i2c);
+    uint8_t value;
 
     switch (s->target_reg) {
     case R_CLASS_TYPE:
     case R_BOARD_REVISION:
-        return s->regs[s->target_reg];
+        value = s->regs[s->target_reg];
+        break;
     default:
         qemu_log_mask(LOG_UNIMP, "%s: Register read unimplemented: 0x%02x\n",
                       __func__, s->target_reg);
-        return 0xff;
+        value = 0xff;
+        break;
     }
+
+    trace_fby35_sb_cpld_read(s->target_reg, value);
+    return value;
 }
 
 static int fby35_sb_cpld_i2c_send(I2CSlave *i2c, uint8_t data)
@@ -89,6 +96,8 @@ static int fby35_sb_cpld_i2c_send(I2CSlave *i2c, uint8_t data)
         s->target_reg = data;
         return 0;
     }
+
+    trace_fby35_sb_cpld_write(s->target_reg, data);
 
     switch (s->target_reg) {
     case R_CLASS_TYPE:
