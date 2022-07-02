@@ -143,8 +143,6 @@ static void fby35_bic_init(Fby35State *s)
     aspeed_board_init_flashes(&s->bic.fmc, "sst25vf032b", 2, 2);
     aspeed_board_init_flashes(&s->bic.spi[0], "sst25vf032b", 2, 4);
     aspeed_board_init_flashes(&s->bic.spi[1], "sst25vf032b", 2, 6);
-
-    armv7m_load_kernel(s->bic.armv7m.cpu, "Y35BCL.elf", 1 * MiB);
 }
 
 static void fby35_init(MachineState *machine)
