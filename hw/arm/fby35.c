@@ -81,7 +81,7 @@ static void fby35_bmc_write_boot_rom(DriveInfo *dinfo, MemoryRegion *mr,
         return;
     }
 
-    mempcpy(memory_region_get_ram_ptr(mr) + offset, storage, rom_size);
+    memcpy(memory_region_get_ram_ptr(mr) + offset, storage, rom_size);
 }
 
 static bool mmio_exec = false;
