@@ -42,6 +42,7 @@ struct AspeedMachineState {
     bool mmio_exec;
     char *fmc_model;
     char *spi_model;
+    uint32_t hw_strap1;
 };
 
 /* Palmetto hardware value: 0x120CE416 */
@@ -348,7 +349,7 @@ static void aspeed_machine_init(MachineState *machine)
         }
     }
 
-    object_property_set_int(OBJECT(&bmc->soc), "hw-strap1", amc->hw_strap1,
+    object_property_set_int(OBJECT(&bmc->soc), "hw-strap1", bmc->hw_strap1,
                             &error_abort);
     object_property_set_int(OBJECT(&bmc->soc), "hw-strap2", amc->hw_strap2,
                             &error_abort);
@@ -377,7 +378,7 @@ static void aspeed_machine_init(MachineState *machine)
                               1, amc->num_cs);
 
     boot_emmc = sc->boot_emmc &&
-        !!(amc->hw_strap1 & AST26500_HW_STRAP_BOOT_SRC_EMMC);
+        !!(bmc->hw_strap1 & AST26500_HW_STRAP_BOOT_SRC_EMMC);
 
     /* Install first FMC flash content as a boot rom. */
     if (!boot_emmc && drive0) {
@@ -1065,7 +1066,10 @@ static void aspeed_set_mmio_exec(Object *obj, bool value, Error **errp)
 
 static void aspeed_machine_instance_init(Object *obj)
 {
+    AspeedMachineClass *amc = ASPEED_MACHINE_GET_CLASS(obj);
+
     ASPEED_MACHINE(obj)->mmio_exec = false;
+    ASPEED_MACHINE(obj)->hw_strap1 = amc->hw_strap1;
 }
 
 static char *aspeed_get_fmc_model(Object *obj, Error **errp)
@@ -1255,6 +1259,32 @@ static void aspeed_machine_witherspoon_class_init(ObjectClass *oc, void *data)
         aspeed_soc_num_cpus(amc->soc_name);
 };
 
+static bool aspeed_get_boot_emmc(Object *obj, Error **errp)
+{
+    AspeedMachineState *bmc = ASPEED_MACHINE(obj);
+
+    return !!(bmc->hw_strap1 & AST26500_HW_STRAP_BOOT_SRC_EMMC);
+}
+
+static void aspeed_set_boot_emmc(Object *obj, bool value, Error **errp)
+{
+    AspeedMachineState *bmc = ASPEED_MACHINE(obj);
+
+    if (value) {
+        bmc->hw_strap1 |= AST26500_HW_STRAP_BOOT_SRC_EMMC;
+    } else {
+        bmc->hw_strap1 &= ~AST26500_HW_STRAP_BOOT_SRC_EMMC;
+    }
+}
+
+static void aspeed_machine_ast2600_class_init(ObjectClass *oc, void *data)
+{
+    object_class_property_add_bool(oc, "boot-emmc", aspeed_get_boot_emmc,
+                                  aspeed_set_boot_emmc);
+    object_class_property_set_description(oc, "boot-emmc",
+                                          "Set or unset boot from EMMC");
+}
+
 static void aspeed_machine_ast2600_evb_class_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
@@ -1273,6 +1303,8 @@ static void aspeed_machine_ast2600_evb_class_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 1 * GiB;
     mc->default_cpus = mc->min_cpus = mc->max_cpus =
         aspeed_soc_num_cpus(amc->soc_name);
+
+    aspeed_machine_ast2600_class_init(oc, data);
 };
 
 static void aspeed_machine_tacoma_class_init(ObjectClass *oc, void *data)
@@ -1292,6 +1324,8 @@ static void aspeed_machine_tacoma_class_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 1 * GiB;
     mc->default_cpus = mc->min_cpus = mc->max_cpus =
         aspeed_soc_num_cpus(amc->soc_name);
+
+    aspeed_machine_ast2600_class_init(oc, data);
 };
 
 static void aspeed_machine_g220a_class_init(ObjectClass *oc, void *data)
@@ -1347,6 +1381,8 @@ static void aspeed_machine_rainier_class_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 1 * GiB;
     mc->default_cpus = mc->min_cpus = mc->max_cpus =
         aspeed_soc_num_cpus(amc->soc_name);
+
+    aspeed_machine_ast2600_class_init(oc, data);
 };
 
 /* On 32-bit hosts, lower RAM to 1G because of the 2047 MB limit */
@@ -1374,6 +1410,8 @@ static void aspeed_machine_fuji_class_init(ObjectClass *oc, void *data)
     mc->default_ram_size = FUJI_BMC_RAM_SIZE;
     mc->default_cpus = mc->min_cpus = mc->max_cpus =
         aspeed_soc_num_cpus(amc->soc_name);
+
+    aspeed_machine_ast2600_class_init(oc, data);
 };
 
 static void aspeed_machine_bletchley_class_init(ObjectClass *oc, void *data)
