@@ -15,6 +15,7 @@
 #include "hw/arm/aspeed_soc.h"
 #include "hw/arm/boot.h"
 #include "hw/arm/fby35.h"
+#include "hw/i2c/i2c.h"
 #include "hw/i2c/i2c_mux_pca954x.h"
 
 #define TYPE_FBY35 MACHINE_TYPE_NAME("fby35")
@@ -83,7 +84,6 @@ static void fby35_bmc_init(Fby35State *s)
     memory_region_init_ram(&s->bmc_dram, OBJECT(s), "bmc-dram",
                            FBY35_BMC_RAM_SIZE, &error_abort);
 
-    object_initialize_child(OBJECT(s), "bmc", &s->bmc, "ast2600-a3");
     object_property_set_int(OBJECT(&s->bmc), "ram-size", FBY35_BMC_RAM_SIZE,
                             &error_abort);
     object_property_set_link(OBJECT(&s->bmc), "memory", OBJECT(&s->bmc_memory),
@@ -129,7 +129,6 @@ static void fby35_bic_init(Fby35State *s)
 
     memory_region_init(&s->bic_memory, OBJECT(s), "bic-memory", UINT64_MAX);
 
-    object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
     qdev_connect_clock_in(DEVICE(&s->bic), "sysclk", s->bic_sysclk);
     object_property_set_link(OBJECT(&s->bic), "memory", OBJECT(&s->bic_memory),
                              &error_abort);
@@ -167,20 +166,27 @@ void fby35_cl_bic_i2c_init(AspeedSoCState *s)
     for (int i = 0; i < 8; i++) {
         i2c_slave_create_simple(ssd[i], "tmp105", 0x6a);
     }
-
-    /*
-     * FIXME: This should actually be the BMC, but both the ME and the BMC
-     * are IPMB endpoints, and the current ME implementation is generic
-     * enough to respond normally to some things.
-     */
-    i2c_slave_create_simple(i2c[6], "intel-me", 0x10);
 }
 
 static void fby35_init(MachineState *machine)
 {
     Fby35State *s = FBY35(machine);
+    I2CBus *slot_i2c[4];
+
+    object_initialize_child(OBJECT(s), "bmc", &s->bmc, "ast2600-a3");
+    object_initialize_child(OBJECT(s), "bic", &s->bic, "ast1030-a1");
 
     fby35_bmc_init(s);
+
+    for (int i = 0; i < ARRAY_SIZE(slot_i2c); i++) {
+        slot_i2c[i] = aspeed_i2c_get_bus(&s->bmc.i2c, i);
+    }
+
+    /*
+     * There are 4 server board slots in fby35, and the first 4 I2C buses of the
+     * BMC are routed to each server board's BIC.
+     */
+    aspeed_i2c_set_bus(&s->bic.i2c, 6, slot_i2c[0]);
     fby35_bic_init(s);
 }
 
