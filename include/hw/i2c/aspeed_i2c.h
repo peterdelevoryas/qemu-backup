@@ -376,5 +376,6 @@ static inline bool aspeed_i2c_bus_is_enabled(AspeedI2CBus *bus)
 }
 
 I2CBus *aspeed_i2c_get_bus(AspeedI2CState *s, int busnr);
+void aspeed_i2c_set_bus(AspeedI2CState *s, int busnr, I2CBus *bus);
 
 #endif /* ASPEED_I2C_H */

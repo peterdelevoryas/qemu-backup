@@ -1236,7 +1236,12 @@ static void aspeed_i2c_bus_realize(DeviceState *dev, Error **errp)
 
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq);
 
-    s->bus = i2c_init_bus(dev, name);
+    /*
+     * If a bus hasn't been provided to the controller, create one from scratch.
+     */
+    if (!s->bus) {
+        s->bus = i2c_init_bus(dev, name);
+    }
     s->slave = i2c_slave_create_simple(s->bus, TYPE_ASPEED_I2C_BUS_SLAVE,
                                        0xff);
 
@@ -1419,4 +1424,13 @@ I2CBus *aspeed_i2c_get_bus(AspeedI2CState *s, int busnr)
     }
 
     return bus;
+}
+
+void aspeed_i2c_set_bus(AspeedI2CState *s, int busnr, I2CBus *bus)
+{
+    AspeedI2CClass *aic = ASPEED_I2C_GET_CLASS(s);
+
+    if (busnr >= 0 && busnr < aic->num_busses) {
+        s->busses[busnr].bus = bus;
+    }
 }
