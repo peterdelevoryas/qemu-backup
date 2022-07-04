@@ -1018,6 +1018,8 @@ static void fby35_i2c_init(AspeedMachineState *bmc)
      * buses 0, 1, 2, 3, and 9. Source address 0x10, target address 0x20 on
      * each.
      */
+
+    i2c_slave_create_simple(i2c[0], "fby35-sb-bic", 0x20);
 }
 
 static void qcom_dc_scm_bmc_i2c_init(AspeedMachineState *bmc)

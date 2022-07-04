@@ -121,6 +121,7 @@ softmmu_ss.add(when: 'CONFIG_ASPEED_SOC', if_true: files(
   'aspeed_xdma.c',
   'aspeed_peci.c',
   'fby35_sb_cpld.c',
+  'fby35_sb_bic.c',
   'intel_me.c'))
 
 softmmu_ss.add(when: 'CONFIG_MSF2', if_true: files('msf2-sysreg.c'))
