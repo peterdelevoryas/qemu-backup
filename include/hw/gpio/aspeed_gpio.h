@@ -107,4 +107,27 @@ struct AspeedGPIOState {
     } sets[ASPEED_GPIO_MAX_NR_SETS];
 };
 
+/*
+ * Returns a unique index identifying a pin, specific to the local GPIO
+ * controller (3.3V, 1.8V, etc).
+ */
+inline int aspeed_gpio_pin_name_to_index(const char *pin_name)
+{
+    /* A, B, C, ..., Z, AA, AB, ..., AC. */
+    char group[3];
+    /* k: 0, 1, ... 7. */
+    int i, j, k;
+
+    if (sscanf(pin_name, "gpio%2[A-Z]%1d", group, &k) != 2) {
+        return -1;
+    }
+
+    for (i = 0, j = 0; group[i]; i++) {
+        j = j * ('Z' - 'A' + 1) + (group[i] - 'A' + 1);
+    }
+    j--;
+
+    return j * 8 + k;
+}
+
 #endif /* ASPEED_GPIO_H */

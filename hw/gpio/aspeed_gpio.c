@@ -879,69 +879,45 @@ static void aspeed_gpio_write(void *opaque, hwaddr offset, uint64_t data,
     return;
 }
 
-static int get_set_idx(AspeedGPIOState *s, const char *group, int *group_idx)
-{
-    AspeedGPIOClass *agc = ASPEED_GPIO_GET_CLASS(s);
-    int set_idx, g_idx;
-
-    for (set_idx = 0; set_idx < agc->nr_gpio_sets; set_idx++) {
-        const GPIOSetProperties *set_props = &agc->props[set_idx];
-        for (g_idx = 0; g_idx < ASPEED_GROUPS_PER_SET; g_idx++) {
-            if (!strncmp(group, set_props->group_label[g_idx], strlen(group))) {
-                *group_idx = g_idx;
-                return set_idx;
-            }
-        }
-    }
-    return -1;
-}
-
 static void aspeed_gpio_get_pin(Object *obj, Visitor *v, const char *name,
                                 void *opaque, Error **errp)
 {
-    int pin = 0xfff;
-    bool level = true;
-    char group[4];
     AspeedGPIOState *s = ASPEED_GPIO(obj);
-    int set_idx, group_idx = 0;
+    bool level = true;
+    int pin, set, bit;
 
-    if (sscanf(name, "gpio%2[A-Z]%1d", group, &pin) != 2) {
-        error_setg(errp, "%s: error reading %s", __func__, name);
+    pin = aspeed_gpio_pin_name_to_index(name);
+    if (pin == -1) {
+        error_setg(errp, "%s: Invalid pin name: %s\n", __func__, name);
         return;
     }
-    set_idx = get_set_idx(s, group, &group_idx);
-    if (set_idx == -1) {
-        error_setg(errp, "%s: invalid group %s", __func__, group);
-        return;
-    }
-    pin =  pin + group_idx * GPIOS_PER_GROUP;
-    level = aspeed_gpio_get_pin_level(s, set_idx, pin);
+    set = pin / ASPEED_GPIOS_PER_SET;
+    bit = pin % ASPEED_GPIOS_PER_SET;
+
+    level = aspeed_gpio_get_pin_level(s, set, bit);
     visit_type_bool(v, name, &level, errp);
 }
 
 static void aspeed_gpio_set_pin(Object *obj, Visitor *v, const char *name,
                                void *opaque, Error **errp)
 {
-    bool level;
-    int pin = 0xfff;
-    char group[4];
     AspeedGPIOState *s = ASPEED_GPIO(obj);
-    int set_idx, group_idx = 0;
+    bool level;
+    int pin, set, bit;
 
     if (!visit_type_bool(v, name, &level, errp)) {
         return;
     }
-    if (sscanf(name, "gpio%2[A-Z]%1d", group, &pin) != 2) {
-        error_setg(errp, "%s: error reading %s", __func__, name);
+
+    pin = aspeed_gpio_pin_name_to_index(name);
+    if (pin == -1) {
+        error_setg(errp, "%s: Invalid pin name: %s\n", __func__, name);
         return;
     }
-    set_idx = get_set_idx(s, group, &group_idx);
-    if (set_idx == -1) {
-        error_setg(errp, "%s: invalid group %s", __func__, group);
-        return;
-    }
-    pin =  pin + group_idx * GPIOS_PER_GROUP;
-    aspeed_gpio_set_pin_level(s, set_idx, pin, level);
+    set = pin / ASPEED_GPIOS_PER_SET;
+    bit = pin % ASPEED_GPIOS_PER_SET;
+
+    aspeed_gpio_set_pin_level(s, set, bit, level);
 }
 
 /****************** Setup functions ******************/

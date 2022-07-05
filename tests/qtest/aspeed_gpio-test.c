@@ -27,6 +27,7 @@
 #include "qemu/timer.h"
 #include "qapi/qmp/qdict.h"
 #include "libqtest-single.h"
+#include "hw/gpio/aspeed_gpio.h"
 
 static void test_set_colocated_pins(const void *data)
 {
@@ -63,6 +64,39 @@ static void test_1_8v_pins(const void *data)
     g_assert(!qtest_qom_get_bool(s, "/machine/soc/gpio_1_8v", "gpioA0"));
 }
 
+static void test_pin_name(const char *name, int expected)
+{
+    int got;
+
+    got = aspeed_gpio_pin_name_to_index(name);
+    if (got != expected) {
+        printf("pin %s got %d expected %d\n", name, got, expected);
+    }
+    g_assert_cmpint(got, ==, expected);
+}
+
+static void test_pin_name_to_index(const void *data)
+{
+    char pin_name[16];
+    int pin_index;
+
+    pin_index = 0;
+    for (char a = 'A'; a <= 'Z'; a++) {
+        for (int i = 0; i < 8; i++) {
+            sprintf(pin_name, "gpio%c%d", a, i);
+            test_pin_name(pin_name, pin_index++);
+        }
+    }
+    for (char a = 'A'; a <= 'Z'; a++) {
+        for (char b = 'A'; b <= 'Z'; b++) {
+            for (int i = 0; i < 8; i++) {
+                sprintf(pin_name, "gpio%c%c%d", a, b, i);
+                test_pin_name(pin_name, pin_index++);
+            }
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     QTestState *s;
@@ -74,6 +108,8 @@ int main(int argc, char **argv)
     qtest_add_data_func("/ast2600/gpio/set_colocated_pins", s,
                         test_set_colocated_pins);
     qtest_add_data_func("/ast2600/gpio/1_8v_pins", s, test_1_8v_pins);
+    qtest_add_data_func("/ast2600/gpio/pin_name_to_index", s,
+                        test_pin_name_to_index);
     r = g_test_run();
     qtest_quit(s);
 
