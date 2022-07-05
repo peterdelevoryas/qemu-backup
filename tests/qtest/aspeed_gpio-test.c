@@ -46,6 +46,23 @@ static void test_set_colocated_pins(const void *data)
     g_assert(!qtest_qom_get_bool(s, "/machine/soc/gpio", "gpioV7"));
 }
 
+static void test_1_8v_pins(const void *data)
+{
+    QTestState *s = (QTestState *)data;
+
+    qtest_qom_set_bool(s, "/machine/soc/gpio_1_8v", "gpioA0", true);
+    g_assert(qtest_qom_get_bool(s, "/machine/soc/gpio_1_8v", "gpioA0"));
+    g_assert(!qtest_qom_get_bool(s, "/machine/soc/gpio", "gpioA0"));
+
+    qtest_qom_set_bool(s, "/machine/soc/gpio", "gpioA0", true);
+    g_assert(qtest_qom_get_bool(s, "/machine/soc/gpio", "gpioA0"));
+    g_assert(qtest_qom_get_bool(s, "/machine/soc/gpio_1_8v", "gpioA0"));
+
+    qtest_qom_set_bool(s, "/machine/soc/gpio_1_8v", "gpioA0", false);
+    g_assert(qtest_qom_get_bool(s, "/machine/soc/gpio", "gpioA0"));
+    g_assert(!qtest_qom_get_bool(s, "/machine/soc/gpio_1_8v", "gpioA0"));
+}
+
 int main(int argc, char **argv)
 {
     QTestState *s;
@@ -56,6 +73,7 @@ int main(int argc, char **argv)
     s = qtest_init("-machine ast2600-evb");
     qtest_add_data_func("/ast2600/gpio/set_colocated_pins", s,
                         test_set_colocated_pins);
+    qtest_add_data_func("/ast2600/gpio/1_8v_pins", s, test_1_8v_pins);
     r = g_test_run();
     qtest_quit(s);
 

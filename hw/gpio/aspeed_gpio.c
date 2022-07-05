@@ -906,11 +906,8 @@ static void aspeed_gpio_get_pin(Object *obj, Visitor *v, const char *name,
     int set_idx, group_idx = 0;
 
     if (sscanf(name, "gpio%2[A-Z]%1d", group, &pin) != 2) {
-        /* 1.8V gpio */
-        if (sscanf(name, "gpio%3[18A-E]%1d", group, &pin) != 2) {
-            error_setg(errp, "%s: error reading %s", __func__, name);
-            return;
-        }
+        error_setg(errp, "%s: error reading %s", __func__, name);
+        return;
     }
     set_idx = get_set_idx(s, group, &group_idx);
     if (set_idx == -1) {
@@ -935,11 +932,8 @@ static void aspeed_gpio_set_pin(Object *obj, Visitor *v, const char *name,
         return;
     }
     if (sscanf(name, "gpio%2[A-Z]%1d", group, &pin) != 2) {
-        /* 1.8V gpio */
-        if (sscanf(name, "gpio%3[18A-E]%1d", group, &pin) != 2) {
-            error_setg(errp, "%s: error reading %s", __func__, name);
-            return;
-        }
+        error_setg(errp, "%s: error reading %s", __func__, name);
+        return;
     }
     set_idx = get_set_idx(s, group, &group_idx);
     if (set_idx == -1) {
@@ -983,8 +977,8 @@ static GPIOSetProperties ast2600_3_3v_set_props[ASPEED_GPIO_MAX_NR_SETS] = {
 };
 
 static GPIOSetProperties ast2600_1_8v_set_props[ASPEED_GPIO_MAX_NR_SETS] = {
-    [0] = {0xffffffff,  0xffffffff,  {"18A", "18B", "18C", "18D"} },
-    [1] = {0x0000000f,  0x0000000f,  {"18E"} },
+    [0] = {0xffffffff,  0xffffffff,  {"A", "B", "C", "D"} },
+    [1] = {0x0000000f,  0x0000000f,  {"E"} },
 };
 
 static GPIOSetProperties ast1030_set_props[ASPEED_GPIO_MAX_NR_SETS] = {
