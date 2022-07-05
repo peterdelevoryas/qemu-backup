@@ -1348,6 +1348,12 @@ static void fby35_reset(MachineState *state)
     object_property_set_bool(OBJECT(gpio), "gpioV5", true, &error_fatal);
     object_property_set_bool(OBJECT(gpio), "gpioV6", true, &error_fatal);
     object_property_set_bool(OBJECT(gpio), "gpioV7", false, &error_fatal);
+
+    /* Server board 1-4 presence */
+    object_property_set_bool(OBJECT(gpio), "gpioB2", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioB3", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioB4", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioB5", true, &error_fatal);
 }
 
 static void aspeed_machine_fby35_class_init(ObjectClass *oc, void *data)
