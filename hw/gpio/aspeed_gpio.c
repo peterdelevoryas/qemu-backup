@@ -978,8 +978,14 @@ static void aspeed_gpio_reset(DeviceState *dev)
 {
     AspeedGPIOState *s = ASPEED_GPIO(dev);
 
-    /* TODO: respect the reset tolerance registers */
-    memset(s->sets, 0, sizeof(s->sets));
+    for (int i = 0; i < ASPEED_GPIO_MAX_NR_SETS; i++) {
+        for (int j = 0; j < ASPEED_GPIOS_PER_SET; j++) {
+            if (extract32(s->sets[i].reset_tol, j, 1)) {
+                continue;
+            }
+            memset(&s->sets[i], 0, sizeof(s->sets[i]));
+        }
+    }
 }
 
 static void aspeed_gpio_realize(DeviceState *dev, Error **errp)
