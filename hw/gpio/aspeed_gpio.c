@@ -267,9 +267,9 @@ static ptrdiff_t aspeed_gpio_set_idx(AspeedGPIOState *s, GPIOSets *regs)
     return nested_struct_index(AspeedGPIOState, s, sets, GPIOSets, regs);
 }
 
-static void aspeed_gpio_update(AspeedGPIOState *s, GPIOSets *regs,
-                               uint32_t value)
+static void aspeed_gpio_update(AspeedGPIOState *s, int set, uint32_t value)
 {
+    GPIOSets *regs = &s->sets[set];
     uint32_t input_mask = regs->input_mask;
     uint32_t direction = regs->direction;
     uint32_t old = regs->data_value;
@@ -302,7 +302,6 @@ static void aspeed_gpio_update(AspeedGPIOState *s, GPIOSets *regs,
             /* If the gpio is set to output... */
             if (direction & mask) {
                 /* ...trigger the line-state IRQ */
-                ptrdiff_t set = aspeed_gpio_set_idx(s, regs);
                 qemu_set_irq(s->gpios[set][gpio], !!(new & mask));
             } else {
                 /* ...otherwise if we meet the line's current IRQ policy... */
@@ -316,22 +315,21 @@ static void aspeed_gpio_update(AspeedGPIOState *s, GPIOSets *regs,
     qemu_set_irq(s->irq, !!(s->pending));
 }
 
-static bool aspeed_gpio_get_pin_level(AspeedGPIOState *s, uint32_t set_idx,
-                                      uint32_t pin)
+static bool aspeed_gpio_get_pin_level(AspeedGPIOState *s, int set, int bit)
 {
     uint32_t reg_val;
-    uint32_t pin_mask = 1 << pin;
+    uint32_t pin_mask = 1 << bit;
 
-    reg_val = s->sets[set_idx].data_value;
+    reg_val = s->sets[set].data_value;
 
     return !!(reg_val & pin_mask);
 }
 
-static void aspeed_gpio_set_pin_level(AspeedGPIOState *s, uint32_t set_idx,
-                                      uint32_t pin, bool level)
+static void aspeed_gpio_set_pin_level(AspeedGPIOState *s, int set, int bit,
+                                      bool level)
 {
-    uint32_t value = s->sets[set_idx].data_value;
-    uint32_t pin_mask = 1 << pin;
+    uint32_t value = s->sets[set].data_value;
+    uint32_t pin_mask = 1 << bit;
 
     if (level) {
         value |= pin_mask;
@@ -339,7 +337,7 @@ static void aspeed_gpio_set_pin_level(AspeedGPIOState *s, uint32_t set_idx,
         value &= ~pin_mask;
     }
 
-    aspeed_gpio_update(s, &s->sets[set_idx], value);
+    aspeed_gpio_update(s, set, value);
 }
 
 /*
@@ -653,7 +651,7 @@ static void aspeed_gpio_write_index_mode(void *opaque, hwaddr offset,
         reg_value = update_value_control_source(set, set->data_value,
                                                 reg_value);
         set->data_read = reg_value;
-        aspeed_gpio_update(s, set, reg_value);
+        aspeed_gpio_update(s, set_idx, reg_value);
         return;
     case gpio_reg_idx_direction:
         reg_value = set->direction;
@@ -753,7 +751,7 @@ static void aspeed_gpio_write_index_mode(void *opaque, hwaddr offset,
             __func__, offset, data, reg_idx_type);
         return;
     }
-    aspeed_gpio_update(s, set, set->data_value);
+    aspeed_gpio_update(s, set_idx, set->data_value);
     return;
 }
 
