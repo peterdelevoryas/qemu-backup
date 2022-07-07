@@ -268,8 +268,10 @@ static ptrdiff_t aspeed_gpio_set_idx(AspeedGPIOState *s, GPIOSets *regs)
 }
 
 static void aspeed_gpio_update(AspeedGPIOState *s, GPIOSets *regs,
-                               uint32_t value)
+                               uint32_t value, bool force)
 {
+    AspeedGPIOClass *agc = ASPEED_GPIO_GET_CLASS(s);
+    ptrdiff_t set = aspeed_gpio_set_idx(s, regs);
     uint32_t input_mask = regs->input_mask;
     uint32_t direction = regs->direction;
     uint32_t old = regs->data_value;
@@ -280,16 +282,32 @@ static void aspeed_gpio_update(AspeedGPIOState *s, GPIOSets *regs,
     diff = old ^ new;
     if (diff) {
         for (gpio = 0; gpio < ASPEED_GPIOS_PER_SET; gpio++) {
+            uint32_t group = gpio / GPIOS_PER_GROUP;
+            uint32_t pin = gpio % GPIOS_PER_GROUP;
             uint32_t mask = 1 << gpio;
+            const char *label = agc->props[set].group_label[group];
 
             /* If the gpio needs to be updated... */
             if (!(diff & mask)) {
                 continue;
             }
 
-            /* ...and we're output or not input-masked... */
-            if (!(direction & mask) && (input_mask & mask)) {
-                continue;
+            if (!force) {
+                /* ...and the pin direction is out... */
+                if (!(direction & mask)) {
+                    qemu_log_mask(LOG_GUEST_ERROR,
+                                  "%s: gpio%s%d's direction is set to input\n",
+                                  __func__, label, pin);
+                    continue;
+                }
+
+                /* ...and the pin is not input-masked... */
+                if (input_mask & mask) {
+                    qemu_log_mask(LOG_GUEST_ERROR,
+                                  "%s: gpio%s%d is input-masked\n",
+                                  __func__, label, pin);
+                    continue;
+                }
             }
 
             /* ...then update the state. */
@@ -302,7 +320,6 @@ static void aspeed_gpio_update(AspeedGPIOState *s, GPIOSets *regs,
             /* If the gpio is set to output... */
             if (direction & mask) {
                 /* ...trigger the line-state IRQ */
-                ptrdiff_t set = aspeed_gpio_set_idx(s, regs);
                 qemu_set_irq(s->gpios[set][gpio], !!(new & mask));
             } else {
                 /* ...otherwise if we meet the line's current IRQ policy... */
@@ -339,7 +356,7 @@ static void aspeed_gpio_set_pin_level(AspeedGPIOState *s, uint32_t set_idx,
         value &= ~pin_mask;
     }
 
-    aspeed_gpio_update(s, &s->sets[set_idx], value);
+    aspeed_gpio_update(s, &s->sets[set_idx], value, true);
 }
 
 /*
@@ -653,7 +670,7 @@ static void aspeed_gpio_write_index_mode(void *opaque, hwaddr offset,
         reg_value = update_value_control_source(set, set->data_value,
                                                 reg_value);
         set->data_read = reg_value;
-        aspeed_gpio_update(s, set, reg_value);
+        aspeed_gpio_update(s, set, reg_value, false);
         return;
     case gpio_reg_idx_direction:
         reg_value = set->direction;
@@ -753,7 +770,7 @@ static void aspeed_gpio_write_index_mode(void *opaque, hwaddr offset,
             __func__, offset, data, reg_idx_type);
         return;
     }
-    aspeed_gpio_update(s, set, set->data_value);
+    aspeed_gpio_update(s, set, set->data_value, false);
     return;
 }
 
@@ -799,7 +816,7 @@ static void aspeed_gpio_write(void *opaque, hwaddr offset, uint64_t data,
         data &= props->output;
         data = update_value_control_source(set, set->data_value, data);
         set->data_read = data;
-        aspeed_gpio_update(s, set, data);
+        aspeed_gpio_update(s, set, data, false);
         return;
     case gpio_reg_direction:
         /*
@@ -875,7 +892,7 @@ static void aspeed_gpio_write(void *opaque, hwaddr offset, uint64_t data,
                       PRIx64"\n", __func__, offset);
         return;
     }
-    aspeed_gpio_update(s, set, set->data_value);
+    aspeed_gpio_update(s, set, set->data_value, false);
     return;
 }
 
