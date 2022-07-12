@@ -10,6 +10,7 @@
 #include "qapi/error.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/block-backend.h"
+#include "sysemu/reset.h"
 #include "hw/boards.h"
 #include "hw/qdev-clock.h"
 #include "hw/arm/aspeed_soc.h"
@@ -147,7 +148,7 @@ void fby35_cl_bic_i2c_init(AspeedSoCState *s)
     }
     pca954x_i2c_get_channels(i2c[1], 0x71, "pca9548", ssd);
 
-    i2c_slave_create_simple(i2c[0], "fby35-sb-cpld", 0x21);
+    // i2c_slave_create_simple(i2c[0], "fby35-sb-cpld", 0x21);
     i2c_slave_create_simple(i2c[1], "tmp105", 0x48);
     i2c_slave_create_simple(i2c[1], "tmp105", 0x49);
     i2c_slave_create_simple(i2c[1], "tmp105", 0x4a);
@@ -188,6 +189,31 @@ static void fby35_init(MachineState *machine)
     fby35_bic_init(s);
 }
 
+static void fby35_reset(MachineState *machine)
+{
+    Fby35State *s = FBY35(machine);
+    AspeedGPIOState *gpio = &s->bmc.gpio;
+
+    qemu_devices_reset();
+
+    /* Board ID: 7 (Class-1, 4 slots) */
+    object_property_set_bool(OBJECT(gpio), "gpioV4", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioV5", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioV6", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioV7", false, &error_fatal);
+
+    /* Slot presence pins, inverse polarity. (False means present) */
+    object_property_set_bool(OBJECT(gpio), "gpioH4", false, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioH5", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioH6", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioH7", true, &error_fatal);
+
+    /* Slot 12v power pins, normal polarity. (True means powered-on) */
+    object_property_set_bool(OBJECT(gpio), "gpioB2", true, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioB3", false, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioB4", false, &error_fatal);
+    object_property_set_bool(OBJECT(gpio), "gpioB5", false, &error_fatal);
+}
 
 static bool fby35_get_mmio_exec(Object *obj, Error **errp)
 {
@@ -210,6 +236,7 @@ static void fby35_class_init(ObjectClass *oc, void *data)
 
     mc->desc = "Meta Platforms fby35";
     mc->init = fby35_init;
+    mc->reset = fby35_reset;
     mc->no_floppy = 1;
     mc->no_cdrom = 1;
     mc->min_cpus = mc->max_cpus = mc->default_cpus = 3;

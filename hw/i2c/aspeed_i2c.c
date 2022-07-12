@@ -82,6 +82,10 @@ static inline void aspeed_i2c_bus_raise_slave_interrupt(AspeedI2CBus *bus)
 {
     AspeedI2CClass *aic = ASPEED_I2C_GET_CLASS(bus->controller);
 
+    if (!aspeed_i2c_is_new_mode(bus->controller)) {
+        return;
+    }
+
     if (!bus->regs[R_I2CS_INTR_STS]) {
         return;
     }
@@ -187,8 +191,28 @@ static uint64_t aspeed_i2c_bus_read(void *opaque, hwaddr offset,
     return aspeed_i2c_bus_old_read(bus, offset, size);
 }
 
+static const char *STATE[I2CD_TX_STATE_MASK + 1] = {
+    [I2CD_IDLE]    = "IDLE",
+    [I2CD_MACTIVE] = "MACTIVE",
+    [I2CD_MSTART]  = "MSTART",
+    [I2CD_MSTARTR] = "MSTARTR",
+    [I2CD_MSTOP]   = "MSTOP",
+    [I2CD_MTXD]    = "MTXD",
+    [I2CD_MRXACK]  = "MRXACK",
+    [I2CD_MRXD]    = "MRXD",
+    [I2CD_MTXACK]  = "MTXACK",
+    [I2CD_SWAIT]   = "SWAIT",
+    [I2CD_SRXD]    = "SRXD",
+    [I2CD_STXACK]  = "STXACK",
+    [I2CD_STXD]    = "STXD",
+    [I2CD_SRXACK]  = "SRXACK",
+    [I2CD_RECOVER] = "RECOVER",
+};
+
 static void aspeed_i2c_set_state(AspeedI2CBus *bus, uint8_t state)
 {
+    trace_aspeed_i2c_bus_state(bus->id, STATE[state]);
+
     if (aspeed_i2c_is_new_mode(bus->controller)) {
         SHARED_ARRAY_FIELD_DP32(bus->regs, R_I2CC_MS_TXRX_BYTE_BUF, TX_STATE,
                                 state);
@@ -1125,6 +1149,14 @@ static int aspeed_i2c_bus_new_slave_event(AspeedI2CBus *bus,
     return 0;
 }
 
+static const char *EVENT[] = {
+    [I2C_START_RECV]       = "START_RECV",
+    [I2C_START_SEND]       = "START_SEND",
+    [I2C_START_SEND_ASYNC] = "START_SEND_ASYNC",
+    [I2C_FINISH]           = "FINISH",
+    [I2C_NACK]             = "NACK",
+};
+
 static int aspeed_i2c_bus_slave_event(I2CSlave *slave, enum i2c_event event)
 {
     BusState *qbus = qdev_get_parent_bus(DEVICE(slave));
@@ -1136,6 +1168,8 @@ static int aspeed_i2c_bus_slave_event(I2CSlave *slave, enum i2c_event event)
     if (aspeed_i2c_is_new_mode(bus->controller)) {
         return aspeed_i2c_bus_new_slave_event(bus, event);
     }
+
+    trace_aspeed_i2c_bus_slave_event(bus->id, EVENT[event]);
 
     switch (event) {
     case I2C_START_SEND_ASYNC:
@@ -1151,9 +1185,6 @@ static int aspeed_i2c_bus_slave_event(I2CSlave *slave, enum i2c_event event)
 
     case I2C_FINISH:
         SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, NORMAL_STOP, 1);
-
-        aspeed_i2c_set_state(bus, I2CD_IDLE);
-
         break;
 
     default:
