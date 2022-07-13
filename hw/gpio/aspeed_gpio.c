@@ -775,7 +775,12 @@ static void aspeed_gpio_write(void *opaque, hwaddr offset, uint64_t data,
 
     /* check gpio index mode */
     if (idx == R_GPIO_INDEX_REG) {
-        aspeed_gpio_write_index_mode(opaque, offset, data, size);
+        if (agc->have_index_reg) {
+            aspeed_gpio_write_index_mode(opaque, offset, data, size);
+        } else {
+            qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid GPIO_INDEX access\n",
+                          __func__);
+        }
         return;
     }
 
@@ -1117,6 +1122,7 @@ static void aspeed_gpio_ast2400_class_init(ObjectClass *klass, void *data)
     agc->nr_gpio_pins = 216;
     agc->nr_gpio_sets = 7;
     agc->reg_table = aspeed_3_3v_gpios;
+    agc->have_index_reg = false;
 }
 
 static void aspeed_gpio_2500_class_init(ObjectClass *klass, void *data)
@@ -1127,6 +1133,7 @@ static void aspeed_gpio_2500_class_init(ObjectClass *klass, void *data)
     agc->nr_gpio_pins = 228;
     agc->nr_gpio_sets = 8;
     agc->reg_table = aspeed_3_3v_gpios;
+    agc->have_index_reg = false;
 }
 
 static void aspeed_gpio_ast2600_3_3v_class_init(ObjectClass *klass, void *data)
@@ -1137,6 +1144,7 @@ static void aspeed_gpio_ast2600_3_3v_class_init(ObjectClass *klass, void *data)
     agc->nr_gpio_pins = 208;
     agc->nr_gpio_sets = 7;
     agc->reg_table = aspeed_3_3v_gpios;
+    agc->have_index_reg = true;
 }
 
 static void aspeed_gpio_ast2600_1_8v_class_init(ObjectClass *klass, void *data)
@@ -1147,6 +1155,7 @@ static void aspeed_gpio_ast2600_1_8v_class_init(ObjectClass *klass, void *data)
     agc->nr_gpio_pins = 36;
     agc->nr_gpio_sets = 2;
     agc->reg_table = aspeed_1_8v_gpios;
+    agc->have_index_reg = true;
 }
 
 static void aspeed_gpio_1030_class_init(ObjectClass *klass, void *data)

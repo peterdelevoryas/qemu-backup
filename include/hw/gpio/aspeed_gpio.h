@@ -75,6 +75,7 @@ struct AspeedGPIOClass {
     uint32_t nr_gpio_pins;
     uint32_t nr_gpio_sets;
     const AspeedGPIOReg *reg_table;
+    bool have_index_reg;
 };
 
 struct AspeedGPIOState {
