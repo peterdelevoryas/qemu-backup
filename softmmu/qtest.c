@@ -504,6 +504,25 @@ static void qtest_process_command(CharBackend *chr, gchar **words)
         }
         qtest_send_prefix(chr);
         qtest_sendf(chr, "OK 0x%04x\n", value);
+    } else if (strcmp(words[0], "cpu_write") == 0) {
+        int cpu_index;
+        uint64_t addr;
+        uint64_t data;
+        uint64_t size;
+        CPUState *cpu;
+
+        for (int i = 1; i < 5; i++) {
+            g_assert(words[i]);
+        }
+        g_assert(!qemu_strtoi(words[1], NULL, 0, &cpu_index));
+        g_assert(!qemu_strtou64(words[2], NULL, 0, &addr));
+        g_assert(!qemu_strtou64(words[3], NULL, 0, &data));
+        g_assert(!qemu_strtou64(words[4], NULL, 0, &size));
+        g_assert((cpu = qemu_get_cpu(cpu_index)));
+
+        address_space_write(cpu->as, addr, MEMTXATTRS_UNSPECIFIED, &data, size);
+        qtest_send_prefix(chr);
+        qtest_send(chr, "OK\n");
     } else if (strcmp(words[0], "writeb") == 0 ||
                strcmp(words[0], "writew") == 0 ||
                strcmp(words[0], "writel") == 0 ||

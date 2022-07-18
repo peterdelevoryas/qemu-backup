@@ -418,6 +418,19 @@ void qtest_writew(QTestState *s, uint64_t addr, uint16_t value);
 void qtest_writel(QTestState *s, uint64_t addr, uint32_t value);
 
 /**
+ * qtest_cpu_writel:
+ * @s: #QTestState instance to operate on.
+ * @cpu_index: CPU index, specifying which address space to write to.
+ * @addr: Guest address to write to.
+ * @data: Data to be written.
+ * @size: Number of bytes within data to be written, <= sizeof(data).
+ *
+ * Writes a value to memory.
+ */
+void qtest_cpu_write(QTestState *s, int cpu_index, uint64_t addr,
+                     uint64_t data, uint64_t size);
+
+/**
  * qtest_writeq:
  * @s: #QTestState instance to operate on.
  * @addr: Guest address to write to.

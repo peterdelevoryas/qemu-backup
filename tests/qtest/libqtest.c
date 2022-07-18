@@ -912,6 +912,14 @@ void qtest_writel(QTestState *s, uint64_t addr, uint32_t value)
     qtest_write(s, "writel", addr, value);
 }
 
+void qtest_cpu_write(QTestState *s, int cpu_index, uint64_t addr,
+                     uint64_t data, uint64_t size)
+{
+    qtest_sendf(s, "cpu_write %d 0x%" PRIx64 " 0x%" PRIx64 " 0x%" PRIx64 "\n",
+                cpu_index, addr, data, size);
+    qtest_rsp(s);
+}
+
 void qtest_writeq(QTestState *s, uint64_t addr, uint64_t value)
 {
     qtest_write(s, "writeq", addr, value);
