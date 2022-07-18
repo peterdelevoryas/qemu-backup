@@ -1,5 +1,5 @@
 /*
- * Aspeed I2C Controller Tests
+ * fby35 tests
  *
  * Copyright (c) Meta Platforms, Inc. and affiliates. (http://www.meta.com)
  *
@@ -13,16 +13,18 @@
 
 #define I2C_BASE 0x1E78A000
 #define I2C_BUS0 (I2C_BASE + 0x80)
+#define BMC_CPU 0
+#define BIC_CPU 2
 
 static void aspeed_i2c_init(QTestState *s)
 {
     uint32_t v;
 
-    qtest_writel(s, I2C_BASE + A_I2C_CTRL_GLOBAL, 0);
+    qtest_cpu_write(s, BMC_CPU, I2C_BASE + A_I2C_CTRL_GLOBAL, 0, sizeof(uint32_t));
 
     v = qtest_readl(s, I2C_BUS0 + A_I2CD_FUN_CTRL);
     v = SHARED_FIELD_DP32(v, MASTER_EN, 1);
-    qtest_writel(s, I2C_BUS0 + A_I2CD_FUN_CTRL, v);
+    qtest_cpu_write(s, BMC_CPU, I2C_BUS0 + A_I2CD_FUN_CTRL, v, sizeof(uint32_t));
 
     v = qtest_readl(s, I2C_BUS0 + A_I2CD_INTR_CTRL);
     v = SHARED_FIELD_DP32(v, TX_ACK, 1);
@@ -31,7 +33,7 @@ static void aspeed_i2c_init(QTestState *s)
     v = SHARED_FIELD_DP32(v, NORMAL_STOP, 1);
     v = SHARED_FIELD_DP32(v, ABNORMAL, 1);
     v = SHARED_FIELD_DP32(v, SCL_TIMEOUT, 1);
-    qtest_writel(s, I2C_BUS0 + A_I2CD_INTR_CTRL, v);
+    qtest_cpu_write(s, BMC_CPU, I2C_BUS0 + A_I2CD_INTR_CTRL, v, sizeof(uint32_t));
 }
 
 static void aspeed_i2c_old_master_tx_start(QTestState *s, uint8_t slave_addr)
@@ -40,11 +42,11 @@ static void aspeed_i2c_old_master_tx_start(QTestState *s, uint8_t slave_addr)
 
     v = qtest_readl(s, I2C_BUS0 + A_I2CD_BYTE_BUF);
     v = SHARED_FIELD_DP32(v, TX_BUF, slave_addr << 1);
-    qtest_writel(s, I2C_BUS0 + A_I2CD_BYTE_BUF, v);
+    qtest_cpu_write(s, 0, I2C_BUS0 + A_I2CD_BYTE_BUF, v, sizeof(uint32_t));
 
     v = SHARED_FIELD_DP32(0, M_START_CMD, 1);
     v = SHARED_FIELD_DP32(v, M_TX_CMD, 1);
-    qtest_writel(s, I2C_BUS0 + A_I2CD_CMD, v);
+    qtest_cpu_write(s, BMC_CPU, I2C_BUS0 + A_I2CD_CMD, v, sizeof(uint32_t));
 }
 
 static void test_old_master_tx(void)
