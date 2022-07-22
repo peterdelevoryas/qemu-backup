@@ -184,7 +184,6 @@ struct AspeedMachineState {
 /* ASPEED GPIO propname values */
 #define AST_GPIO_IRQ_X0_NUM 185
 #define AST_GPIO_IRQ_X3_NUM 188
-#define AST_GPIO_IRQ_X4_NUM 189
 
 #define AST_SMP_MAILBOX_BASE            0x1e6e2180
 #define AST_SMP_MBOX_FIELD_ENTRY        (AST_SMP_MAILBOX_BASE + 0x0)
@@ -398,8 +397,6 @@ static void aspeed_machine_init(MachineState *machine)
                                 qdev_get_gpio_in_named(DEVICE(spi_gpio), "SPI_CS_in", 0));
     qdev_connect_gpio_out_named(DEVICE(&bmc->soc.gpio), "sysbus-irq", AST_GPIO_IRQ_X3_NUM,
                                 qdev_get_gpio_in_named(DEVICE(spi_gpio), "SPI_CLK", 0));
-    qdev_connect_gpio_out_named(DEVICE(&bmc->soc.gpio), "sysbus-irq", AST_GPIO_IRQ_X4_NUM,
-                                qdev_get_gpio_in_named(DEVICE(spi_gpio), "SPI_MOSI", 0));
     object_property_set_bool(OBJECT(spi_gpio->aspeed_gpio), "gpioX5", true, &error_fatal);
 
     aspeed_board_init_flashes(&bmc->soc.fmc,
