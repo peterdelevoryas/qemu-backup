@@ -26,6 +26,7 @@
 #include "qemu/module.h"
 #include "qemu/error-report.h"
 #include "qapi/error.h"
+#include "qapi/visitor.h"
 #include "hw/i2c/aspeed_i2c.h"
 #include "hw/irq.h"
 #include "hw/qdev-properties.h"
@@ -109,6 +110,8 @@ static uint64_t aspeed_i2c_bus_old_read(AspeedI2CBus *bus, hwaddr offset,
         break;
     case A_I2CD_CMD:
         value = SHARED_FIELD_DP32(value, BUS_BUSY_STS, i2c_bus_busy(bus->bus));
+        value = SHARED_FIELD_DP32(value, SCL_LINE_STS, !bus->scl_timeout);
+        value = SHARED_FIELD_DP32(value, SDA_LINE_STS, !bus->scl_timeout);
         break;
     case A_I2CD_DMA_ADDR:
         if (!aic->has_dma) {
@@ -460,10 +463,27 @@ static void aspeed_i2c_bus_handle_cmd(AspeedI2CBus *bus, uint64_t value)
         aspeed_i2c_bus_cmd_dump(bus);
     }
 
+    if (SHARED_ARRAY_FIELD_EX32(bus->regs, reg_cmd, BUS_RECOVER_CMD_EN)) {
+        if (!bus->scl_timeout) {
+            SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, TX_ACK, 0);
+            SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, SCL_TIMEOUT, 0);
+            SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, SDA_DL_TIMEOUT, 0);
+            SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, BUS_RECOVER_DONE, 1);
+        }
+        return;
+    }
+
     if (SHARED_ARRAY_FIELD_EX32(bus->regs, reg_cmd, M_START_CMD)) {
         uint8_t state = aspeed_i2c_get_state(bus) & I2CD_MACTIVE ?
             I2CD_MSTARTR : I2CD_MSTART;
         uint8_t addr;
+
+        if (bus->scl_timeout) {
+            SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, TX_ACK, 1);
+            SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, SCL_TIMEOUT, 1);
+            SHARED_ARRAY_FIELD_DP32(bus->regs, reg_intr_sts, SDA_DL_TIMEOUT, 1);
+            return;
+        }
 
         aspeed_i2c_set_state(bus, state);
 
@@ -1254,6 +1274,24 @@ static Property aspeed_i2c_bus_properties[] = {
     DEFINE_PROP_END_OF_LIST(),
 };
 
+static void aspeed_i2c_bus_get_scl_timeout(Object *obj, Visitor *v,
+                                           const char *name, void *opaque,
+                                           Error **errp)
+{
+    AspeedI2CBus *s = ASPEED_I2C_BUS(obj);
+
+    visit_type_bool(v, name, &s->scl_timeout, errp);
+}
+
+static void aspeed_i2c_bus_set_scl_timeout(Object *obj, Visitor *v,
+                                           const char *name, void *opaque,
+                                           Error **errp)
+{
+    AspeedI2CBus *s = ASPEED_I2C_BUS(obj);
+
+    visit_type_bool(v, name, &s->scl_timeout, errp);
+}
+
 static void aspeed_i2c_bus_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
@@ -1262,6 +1300,11 @@ static void aspeed_i2c_bus_class_init(ObjectClass *klass, void *data)
     dc->realize = aspeed_i2c_bus_realize;
     dc->reset = aspeed_i2c_bus_reset;
     device_class_set_props(dc, aspeed_i2c_bus_properties);
+
+    object_class_property_add(klass, "scl-timeout", "bool",
+                              aspeed_i2c_bus_get_scl_timeout,
+                              aspeed_i2c_bus_set_scl_timeout,
+                              NULL, NULL);
 }
 
 static const TypeInfo aspeed_i2c_bus_info = {

@@ -1020,6 +1020,11 @@ static void fby35_i2c_init(AspeedMachineState *bmc)
      */
 }
 
+static void fbttn_i2c_init(AspeedMachineState *bmc)
+{
+    i2c_slave_create_simple(aspeed_i2c_get_bus(&bmc->soc.i2c, 12), "tmp421", 0x1f);
+}
+
 static void qcom_dc_scm_bmc_i2c_init(AspeedMachineState *bmc)
 {
     AspeedSoCState *soc = &bmc->soc;
@@ -1795,6 +1800,7 @@ static const struct FBMachineData fb_machines[] = {
         .macs_mask   = ASPEED_MAC0_ON,
         .stdout_path = ASPEED_DEV_UART5,
         .ram_size    = 1 * GiB,
+        .i2c_init    = fbttn_i2c_init,
     },
     {
         .name        = "fbtp-bmc",

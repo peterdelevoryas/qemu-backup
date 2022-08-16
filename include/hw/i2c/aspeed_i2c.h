@@ -235,6 +235,7 @@ struct AspeedI2CBus {
     I2CBus *bus;
     uint8_t id;
     qemu_irq irq;
+    bool scl_timeout;
 
     uint32_t regs[ASPEED_I2C_NEW_NUM_REG];
 };
