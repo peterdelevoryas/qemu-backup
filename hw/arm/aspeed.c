@@ -1936,6 +1936,11 @@ static const struct FBMachineData fb_machines[] = {
         .ram_size    = FUJI_BMC_RAM_SIZE,
     },
     {
+        .parent      = MACHINE_TYPE_NAME("fby35-bmc"),
+        .name        = "greatlakes-bmc",
+        .desc        = "Facebook Great Lakes BMC (Cortex-A7)",
+    },
+    {
         .parent      = MACHINE_TYPE_NAME("ast1030-evb"),
         .name        = "oby35-cl",
         .desc        = "Facebook fby35 CraterLake BIC (Cortex-M4)",
